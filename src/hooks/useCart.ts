@@ -105,7 +105,7 @@ export function useCart() {
   const hasPhysical = items.some(
     (i) => i.type === "PHYSICAL" || i.type === "BOTH"
   );
-  const deliveryFee = hasPhysical ? 250 : 0; // 250 MZN delivery fee
+  const deliveryFee = hasPhysical ? 150 : 0; // 150 MZN delivery fee (must match backend OrderService)
   const total = subtotal + deliveryFee;
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
 

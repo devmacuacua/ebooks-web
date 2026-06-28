@@ -95,7 +95,10 @@ export default function NewBookPage() {
       if (coverFile && created.id) {
         const formData = new FormData();
         formData.append("file", coverFile);
-        await api.post(`/api/admin/books/${created.id}/cover`, formData);
+        const { data: coverData } = await api.post<{ url: string; objectKey: string }>(
+          `/api/media/books/${created.id}/cover`, formData
+        );
+        mediaUpdates.coverImage = coverData.url;
       }
 
       if (ebookFile && created.id && (data.type === "EBOOK" || data.type === "BOTH")) {

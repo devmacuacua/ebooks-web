@@ -15,7 +15,7 @@ export interface OfflineBook {
 export interface CachedPage {
   bookId: string;
   pageNumber: number;
-  imageBase64: string;
+  pdfBase64: string;
   cachedAt: number;
 }
 

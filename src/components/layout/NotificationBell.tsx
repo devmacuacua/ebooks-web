@@ -1,27 +1,41 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Bell, CheckCheck, Package, BookOpen, Crown, Info } from "lucide-react";
+import { Bell, CheckCheck, Package, BookOpen, Crown, CreditCard, Truck, Info } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+type NotificationType =
+  | "SUBSCRIPTION_EXPIRING"
+  | "SUBSCRIPTION_EXPIRED"
+  | "SUBSCRIPTION_ACTIVATED"
+  | "ORDER_STATUS_CHANGED"
+  | "DELIVERY_UPDATE"
+  | "NEW_BOOK"
+  | "PAYMENT_CONFIRMED"
+  | "PAYMENT_FAILED";
+
 interface AppNotification {
   id: string;
   userId: string;
-  type: "ORDER_UPDATE" | "NEW_BOOK" | "SUBSCRIPTION" | "SYSTEM";
+  type: NotificationType;
   title: string;
   body: string;
   isRead: boolean;
   createdAt: string;
 }
 
-const TYPE_ICON: Record<AppNotification["type"], React.ReactNode> = {
-  ORDER_UPDATE: <Package className="h-3.5 w-3.5 text-blue-600" />,
+const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
+  ORDER_STATUS_CHANGED: <Package className="h-3.5 w-3.5 text-blue-600" />,
   NEW_BOOK: <BookOpen className="h-3.5 w-3.5 text-green-600" />,
-  SUBSCRIPTION: <Crown className="h-3.5 w-3.5 text-yellow-500" />,
-  SYSTEM: <Info className="h-3.5 w-3.5 text-gray-500" />,
+  SUBSCRIPTION_EXPIRING: <Crown className="h-3.5 w-3.5 text-yellow-500" />,
+  SUBSCRIPTION_EXPIRED: <Crown className="h-3.5 w-3.5 text-red-500" />,
+  SUBSCRIPTION_ACTIVATED: <Crown className="h-3.5 w-3.5 text-green-600" />,
+  DELIVERY_UPDATE: <Truck className="h-3.5 w-3.5 text-purple-600" />,
+  PAYMENT_CONFIRMED: <CreditCard className="h-3.5 w-3.5 text-green-600" />,
+  PAYMENT_FAILED: <CreditCard className="h-3.5 w-3.5 text-red-500" />,
 };
 
 export function NotificationBell({ userId }: { userId: string }) {

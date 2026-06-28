@@ -5,7 +5,7 @@ export interface User {
   email: string;
   phone?: string;
   avatarUrl?: string;
-  role: "USER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN";
   emailVerified: boolean;
   createdAt: string;
 }
@@ -146,6 +146,16 @@ export interface DeliveryTrackingStep {
   completed: boolean;
 }
 
+export interface OrderSummary {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  total: number;
+  currency: string;
+  itemCount: number;
+  createdAt: string;
+}
+
 // ─── Payment ──────────────────────────────────────────────────────────────────
 export type PaymentMethod = "MPESA" | "EMOLA" | "VISA" | "MASTERCARD" | "PAYPAL";
 export type PaymentStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -282,6 +292,6 @@ export interface DrmTokenResponse {
 export interface DrmPageResponse {
   pageNumber: number;
   totalPages: number;
-  imageBase64: string;
+  pdfBase64: string;
   newToken: string;
 }

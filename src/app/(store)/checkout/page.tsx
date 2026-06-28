@@ -42,15 +42,20 @@ type PaymentStep = "method" | "processing" | "success" | "failed";
 
 // ─── Stripe Card Form ──────────────────────────────────────────────────────────
 function StripeCardForm({
-  onPayment,
+  onCheckout,
+  onSuccess,
+  onFailure,
   loading,
 }: {
-  onPayment: (paymentMethodId: string) => void;
+  onCheckout: (paymentMethodId: string) => Promise<{ paymentId: string; clientSecret?: string }>;
+  onSuccess: (paymentId: string) => void;
+  onFailure: () => void;
   loading: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
+  const [confirming, setConfirming] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +74,27 @@ function StripeCardForm({
       return;
     }
 
-    onPayment(paymentMethod.id);
+    setConfirming(true);
+    try {
+      const result = await onCheckout(paymentMethod.id);
+
+      if (result.clientSecret) {
+        const { error: confirmError } = await stripe.confirmCardPayment(result.clientSecret, {
+          payment_method: paymentMethod.id,
+        });
+        if (confirmError) {
+          toast({ variant: "destructive", title: "Pagamento recusado", description: confirmError.message });
+          onFailure();
+          return;
+        }
+      }
+
+      onSuccess(result.paymentId);
+    } catch {
+      onFailure();
+    } finally {
+      setConfirming(false);
+    }
   };
 
   return (
@@ -87,7 +112,7 @@ function StripeCardForm({
           }}
         />
       </div>
-      <Button type="submit" className="w-full" loading={loading} disabled={!stripe}>
+      <Button type="submit" className="w-full" loading={loading || confirming} disabled={!stripe}>
         Confirmar Pagamento
       </Button>
     </form>
@@ -229,37 +254,33 @@ function CheckoutContent() {
     }
   };
 
-  const handleStripePayment = async (paymentMethodId: string) => {
-    try {
-      const result = await createOrder.mutateAsync({
-        items,
-        addressId: selectedAddressId || undefined,
-        paymentMethod: "VISA",
-        stripePaymentMethodId: paymentMethodId,
-      });
+  const handleStripeCheckout = async (paymentMethodId: string) => {
+    return createOrder.mutateAsync({
+      items,
+      addressId: selectedAddressId || undefined,
+      paymentMethod: "VISA",
+      stripePaymentMethodId: paymentMethodId,
+    });
+  };
 
-      // Stripe is synchronous — check status immediately
-      if (result.paymentId) {
-        const { data } = await api.get<{ status: PaymentStatus }>(`/api/commerce/payments/${result.paymentId}`);
-        if (data.status === "COMPLETED") {
-          setStep("success");
-          clearCart();
-        } else {
-          setStep("failed");
-        }
-      }
-    } catch {
-      setStep("failed");
-    }
+  const handleStripeSuccess = (pid: string) => {
+    setPaymentId(pid);
+    setStep("processing");
+    setPollCount(0);
   };
 
   const handlePayPal = async () => {
     try {
-      const { data } = await api.post<{ redirectUrl: string }>("/api/commerce/payments/paypal/create", {
-        amount: total,
-        currency: "MZN",
+      const result = await createOrder.mutateAsync({
+        items,
+        addressId: selectedAddressId || undefined,
+        paymentMethod: "PAYPAL",
       });
-      window.location.href = data.redirectUrl;
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      } else {
+        toast({ variant: "destructive", title: "Erro", description: "PayPal não retornou um URL de redireccionamento." });
+      }
     } catch {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível iniciar o pagamento com PayPal." });
     }
@@ -508,7 +529,9 @@ function CheckoutContent() {
             {(selectedMethod === "VISA" || selectedMethod === "MASTERCARD") && (
               <Elements stripe={stripePromise}>
                 <StripeCardForm
-                  onPayment={handleStripePayment}
+                  onCheckout={handleStripeCheckout}
+                  onSuccess={handleStripeSuccess}
+                  onFailure={() => setStep("failed")}
                   loading={createOrder.isPending}
                 />
               </Elements>

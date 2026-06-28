@@ -54,7 +54,15 @@ export function useCreateOrder() {
         phoneNumber: payload.phoneNumber,
         stripePaymentMethodId: payload.stripePaymentMethodId,
       };
-      const { data } = await api.post<{ orderId: string; paymentId: string }>("/api/commerce/orders", body);
+      const { data } = await api.post<{
+        orderId: string;
+        paymentId: string;
+        status: string;
+        clientSecret?: string;
+        redirectUrl?: string;
+        instructions?: string;
+        method?: string;
+      }>("/api/commerce/orders", body);
       return data;
     },
     onSuccess: () => {

@@ -11,8 +11,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type DeliveryStatus =
-  | "CREATED"
-  | "PICKING"
+  | "PENDING"
+  | "PROCESSING"
+  | "PICKED_UP"
   | "IN_TRANSIT"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
@@ -26,21 +27,18 @@ interface Delivery {
   status: DeliveryStatus;
   recipientName: string;
   province: string;
-  city: string;
+  district: string;
   estimatedDeliveryDate?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface PaginatedResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-}
+import type { PaginatedResponse } from "@/types";
 
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
-  CREATED: "Criada",
-  PICKING: "Em Recolha",
+  PENDING: "Pendente",
+  PROCESSING: "Em Processamento",
+  PICKED_UP: "Recolhida",
   IN_TRANSIT: "Em Trânsito",
   OUT_FOR_DELIVERY: "Em Entrega",
   DELIVERED: "Entregue",
@@ -49,8 +47,9 @@ const STATUS_LABELS: Record<DeliveryStatus, string> = {
 };
 
 const STATUS_COLORS: Record<DeliveryStatus, string> = {
-  CREATED: "bg-gray-100 text-gray-700",
-  PICKING: "bg-yellow-100 text-yellow-800",
+  PENDING: "bg-gray-100 text-gray-700",
+  PROCESSING: "bg-yellow-100 text-yellow-800",
+  PICKED_UP: "bg-indigo-100 text-indigo-800",
   IN_TRANSIT: "bg-blue-100 text-blue-800",
   OUT_FOR_DELIVERY: "bg-purple-100 text-purple-800",
   DELIVERED: "bg-green-100 text-green-700",
@@ -59,16 +58,18 @@ const STATUS_COLORS: Record<DeliveryStatus, string> = {
 };
 
 const NEXT_STATUS: Partial<Record<DeliveryStatus, DeliveryStatus>> = {
-  CREATED: "PICKING",
-  PICKING: "IN_TRANSIT",
+  PENDING: "PROCESSING",
+  PROCESSING: "PICKED_UP",
+  PICKED_UP: "IN_TRANSIT",
   IN_TRANSIT: "OUT_FOR_DELIVERY",
   OUT_FOR_DELIVERY: "DELIVERED",
 };
 
 const STATUS_OPTIONS: { value: DeliveryStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
-  { value: "CREATED", label: "Criada" },
-  { value: "PICKING", label: "Em Recolha" },
+  { value: "PENDING", label: "Pendente" },
+  { value: "PROCESSING", label: "Em Processamento" },
+  { value: "PICKED_UP", label: "Recolhida" },
   { value: "IN_TRANSIT", label: "Em Trânsito" },
   { value: "OUT_FOR_DELIVERY", label: "Em Entrega" },
   { value: "DELIVERED", label: "Entregue" },
@@ -97,8 +98,8 @@ export default function AdminDeliveriesPage() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: DeliveryStatus; notes?: string }) => {
-      await api.patch(`/api/admin/deliveries/${id}/status`, { status, notes });
+    mutationFn: async ({ id, status, description }: { id: string; status: DeliveryStatus; description?: string }) => {
+      await api.patch(`/api/admin/deliveries/${id}/status`, { status, description });
     },
     onSuccess: () => {
       toast({ variant: "success", title: "Estado actualizado!" });
@@ -176,7 +177,7 @@ export default function AdminDeliveriesPage() {
                         </td>
                         <td className="py-3 px-4 text-gray-700">{delivery.recipientName}</td>
                         <td className="py-3 px-4 text-gray-500 text-xs">
-                          {delivery.city}, {delivery.province}
+                          {delivery.district}, {delivery.province}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[delivery.status]}`}>

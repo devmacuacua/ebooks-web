@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { formatMZN } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import type { Order, OrderStatus, PaginatedResponse } from "@/types";
+import type { OrderSummary, OrderStatus, PaginatedResponse } from "@/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -36,13 +36,13 @@ export default function AdminOrdersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<PaginatedResponse<Order>>({
+  const { data, isLoading } = useQuery<PaginatedResponse<OrderSummary>>({
     queryKey: ["admin-orders", search, statusFilter, page],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), size: "20" });
       if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
-      const { data } = await api.get<PaginatedResponse<Order>>(
+      const { data } = await api.get<PaginatedResponse<OrderSummary>>(
         `/api/admin/orders?${params.toString()}`
       );
       return data;

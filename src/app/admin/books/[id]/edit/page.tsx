@@ -93,7 +93,10 @@ export default function EditBookPage() {
       if (coverFile) {
         const formData = new FormData();
         formData.append("file", coverFile);
-        await api.post(`/api/admin/books/${id}/cover`, formData);
+        const { data: coverData } = await api.post<{ url: string; objectKey: string }>(
+          `/api/media/books/${id}/cover`, formData
+        );
+        await api.put(`/api/admin/books/${id}`, { coverImage: coverData.url });
       }
 
       if (ebookFile && (book?.type === "EBOOK" || book?.type === "BOTH")) {

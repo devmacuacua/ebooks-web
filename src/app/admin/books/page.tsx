@@ -20,7 +20,7 @@ export default function AdminBooksPage() {
   const { data, isLoading } = useQuery<PaginatedResponse<BookSummary>>({
     queryKey: ["admin-books", search, page],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), size: "20" });
+      const params = new URLSearchParams({ page: String(page), size: "20", adminMode: "true" });
       if (search) params.set("search", search);
       const { data } = await api.get<PaginatedResponse<BookSummary>>(
         `/api/admin/books?${params.toString()}`

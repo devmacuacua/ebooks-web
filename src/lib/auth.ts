@@ -8,7 +8,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   name: string;
-  role: "USER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN";
   exp: number;
   iat: number;
 }

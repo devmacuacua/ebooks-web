@@ -15,7 +15,7 @@ const VALID_PAYLOAD = {
   sub: "user-123",
   email: "user@test.com",
   name: "Test User",
-  role: "USER" as const,
+  role: "CUSTOMER" as const,
   exp: FUTURE_EXP,
   iat: Math.floor(Date.now() / 1000) - 60,
 };
@@ -82,7 +82,7 @@ describe("auth lib", () => {
       expect(user!.id).toBe("user-123");
       expect(user!.email).toBe("user@test.com");
       expect(user!.name).toBe("Test User");
-      expect(user!.role).toBe("USER");
+      expect(user!.role).toBe("CUSTOMER");
     });
 
     it("returns null for expired token", () => {
@@ -122,7 +122,7 @@ describe("auth lib", () => {
       expect(isAdmin()).toBe(false);
     });
 
-    it("returns false for a regular USER role", () => {
+    it("returns false for a regular CUSTOMER role", () => {
       localStorage.setItem("ebooks_access_token", makeFakeJwt(VALID_PAYLOAD));
       expect(isAdmin()).toBe(false);
     });

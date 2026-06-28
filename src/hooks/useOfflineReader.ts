@@ -164,7 +164,7 @@ export function useOfflineBook(bookId: string) {
           }
 
           const { data: pageData } = await api.get<{
-            imageBase64: string;
+            pdfBase64: string;
             pageNumber: number;
             totalPages: number;
             newToken?: string;
@@ -175,7 +175,7 @@ export function useOfflineBook(bookId: string) {
           await saveCachedPage({
             bookId,
             pageNumber: page,
-            imageBase64: pageData.imageBase64,
+            pdfBase64: pageData.pdfBase64,
             cachedAt: Date.now(),
           });
 

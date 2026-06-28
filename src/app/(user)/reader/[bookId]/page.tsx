@@ -34,6 +34,39 @@ const THEMES: Record<Theme, { bg: string; text: string; label: string }> = {
   dark: { bg: "bg-gray-900", text: "text-gray-100", label: "Escuro" },
 };
 
+async function renderPdfToCanvas(
+  canvas: HTMLCanvasElement,
+  pdfBase64: string
+): Promise<void> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+  const data = atob(pdfBase64);
+  const bytes = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    bytes[i] = data.charCodeAt(i);
+  }
+
+  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  const page = await pdf.getPage(1);
+
+  const container = canvas.parentElement;
+  const maxW = container ? container.clientWidth : window.innerWidth - 120;
+  const maxH = container ? container.clientHeight : window.innerHeight - 112;
+
+  const viewport = page.getViewport({ scale: 1 });
+  const scale = Math.min(maxW / viewport.width, maxH / viewport.height);
+  const scaled = page.getViewport({ scale });
+
+  canvas.width = scaled.width;
+  canvas.height = scaled.height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  await page.render({ canvasContext: ctx, canvas, viewport: scaled }).promise;
+}
+
 function ReaderContent() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
@@ -42,24 +75,25 @@ function ReaderContent() {
   const [drmToken, setDrmToken] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageImage, setPageImage] = useState<string | null>(null);
   const [loadingInit, setLoadingInit] = useState(true);
   const [loadingPage, setLoadingPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
+  const [pageReady, setPageReady] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const [theme, setTheme] = useState<Theme>("white");
   const [pageInput, setPageInput] = useState("1");
   const deviceId = useRef<string>("");
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const initialPageFetched = useRef(false);
 
   // Initialize reading session
   useEffect(() => {
     deviceId.current = getDeviceId();
 
     const init = async () => {
-      // Try offline first if we have a cached book
       const offlineBook = await getOfflineBook(bookId);
 
       if (!isOnline) {
@@ -76,7 +110,6 @@ function ReaderContent() {
         return;
       }
 
-      // Online: start DRM session
       try {
         const { data } = await api.post<DrmTokenResponse>("/api/reading/reader/token", {
           bookId,
@@ -87,7 +120,6 @@ function ReaderContent() {
         setCurrentPage(1);
         setPageInput("1");
       } catch (e: unknown) {
-        // If online request fails but we have cached content, fall back
         if (offlineBook?.status === "ready") {
           setOfflineMode(true);
           setTotalPages(offlineBook.totalPages);
@@ -108,19 +140,18 @@ function ReaderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId]);
 
-  // Load a page from cache (offline) or API (online)
   const fetchPage = useCallback(
     async (page: number, token: string | null) => {
       setLoadingPage(true);
+      setPageReady(false);
       try {
-        // Offline mode: read from IndexedDB
         if (offlineMode || !isOnline) {
           const cached = await getCachedPage(bookId, page);
-          if (cached) {
-            setPageImage(cached.imageBase64);
+          if (cached && canvasRef.current) {
+            await renderPdfToCanvas(canvasRef.current, cached.pdfBase64);
+            setPageReady(true);
             setCurrentPage(page);
             setPageInput(String(page));
-            // Queue progress for later sync
             await queueProgressSync(bookId, page, totalPages);
           } else {
             setError("Página não disponível offline. Ligue-se à internet.");
@@ -128,38 +159,36 @@ function ReaderContent() {
           return;
         }
 
-        // Online mode: fetch from DRM API
         if (!token) return;
         const response = await api.get<DrmPageResponse>(
           `/api/reading/reader/${bookId}/page/${page}`,
-          { params: { token, deviceId: deviceId.current }, responseType: "json" }
+          { params: { token, deviceId: deviceId.current } }
         );
 
-        setPageImage(response.data.imageBase64);
+        if (canvasRef.current) {
+          await renderPdfToCanvas(canvasRef.current, response.data.pdfBase64);
+          setPageReady(true);
+        }
 
         // Cache the page in IndexedDB as we read (background)
         import("@/lib/offline-db").then(({ saveCachedPage }) =>
           saveCachedPage({
             bookId,
             pageNumber: page,
-            imageBase64: response.data.imageBase64,
+            pdfBase64: response.data.pdfBase64,
             cachedAt: Date.now(),
           }).catch(() => {})
         );
 
-        const newToken = response.headers["x-new-drm-token"] || response.data.newToken;
-        if (newToken) setDrmToken(newToken);
+        if (response.data.newToken) setDrmToken(response.data.newToken);
 
         setCurrentPage(response.data.pageNumber);
         setTotalPages(response.data.totalPages);
         setPageInput(String(response.data.pageNumber));
 
-        // Save progress (fire-and-forget)
         api
-          .post("/api/reading/progress", {
-            bookId,
+          .post(`/api/reading/reader/${bookId}/progress`, {
             currentPage: response.data.pageNumber,
-            totalPages: response.data.totalPages,
             deviceId: deviceId.current,
           })
           .catch(() => {});
@@ -175,10 +204,11 @@ function ReaderContent() {
     [bookId, offlineMode, isOnline, totalPages]
   );
 
-  // Fetch first page once token/offlineMode is ready
   useEffect(() => {
     if (loadingInit) return;
+    if (initialPageFetched.current) return;
     if (offlineMode || drmToken) {
+      initialPageFetched.current = true;
       fetchPage(1, drmToken);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,7 +224,6 @@ function ReaderContent() {
     [drmToken, totalPages, loadingPage, fetchPage]
   );
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (
@@ -257,7 +286,6 @@ function ReaderContent() {
         </button>
 
         <div className="flex items-center gap-4">
-          {/* Offline indicator */}
           {(offlineMode || !isOnline) && (
             <div className="flex items-center gap-1 text-xs text-amber-400">
               <WifiOff className="h-3.5 w-3.5" />
@@ -265,7 +293,6 @@ function ReaderContent() {
             </div>
           )}
 
-          {/* Page input */}
           <div className="flex items-center gap-2 text-sm text-gray-300">
             <span>Pág.</span>
             <input
@@ -374,17 +401,18 @@ function ReaderContent() {
         >
           {loadingPage ? (
             <Loader2 className="h-8 w-8 text-white animate-spin" />
-          ) : pageImage ? (
+          ) : (
             <div className="relative h-full w-full flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`data:image/png;base64,${pageImage}`}
-                alt={`Página ${currentPage}`}
-                className={`max-h-full max-w-full object-contain rounded shadow-2xl drm-page ${themeConfig.bg}`}
+              <canvas
+                ref={canvasRef}
+                className={`max-h-full max-w-full object-contain rounded shadow-2xl drm-page ${themeConfig.bg} ${pageReady ? "block" : "hidden"}`}
                 draggable={false}
               />
+              {!pageReady && !loadingPage && (
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+              )}
             </div>
-          ) : null}
+          )}
         </div>
 
         <button

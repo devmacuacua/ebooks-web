@@ -239,7 +239,7 @@ export default function BookDetailPage() {
               <span className="text-3xl font-extrabold text-gray-900">{formatMZN(book.price)}</span>
               {book.type !== "EBOOK" && (
                 <span className="text-sm text-gray-500">
-                  + entrega 250,00 MZN
+                  + entrega 150,00 MZN
                 </span>
               )}
             </div>

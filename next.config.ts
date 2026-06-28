@@ -2,6 +2,15 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  webpack: (config) => {
+    // pdfjs-dist references canvas as an optional native dependency for Node.js.
+    // In the browser build we don't need it, so stub it out.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    };
+    return config;
+  },
   async headers() {
     return [
       {

@@ -51,7 +51,11 @@ export function useSubscribe() {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return;
+      }
       toast({
         variant: "success",
         title: "Subscrição activada!",
