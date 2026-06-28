@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Lock, Bell, Camera } from "lucide-react";
+import { User, Lock, Bell, Camera, Loader2 } from "lucide-react";
 import * as Tabs from "@radix-ui/react-tabs";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +48,11 @@ function SettingsContent() {
   const user = useCurrentUser();
   const { data: profile } = useProfile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({
     orderUpdates: true,
     newBooks: true,
@@ -78,6 +82,25 @@ function SettingsContent() {
   const passwordForm = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
   });
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post<{ url: string }>("/api/media/users/avatar", formData);
+      await api.put("/api/users/profile", { avatar: data.url });
+      await queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      toast({ variant: "success", title: "Foto actualizada!" });
+    } catch {
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível actualizar a foto." });
+    } finally {
+      setAvatarUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const onSaveProfile = async (data: ProfileFormData) => {
     setSavingProfile(true);
@@ -151,12 +174,31 @@ function SettingsContent() {
             {/* Avatar */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="h-16 w-16 rounded-full bg-blue-800 flex items-center justify-center text-white text-2xl font-bold">
-                  {user?.name?.charAt(0).toUpperCase() || "U"}
-                </div>
-                <button className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-gray-200 transition-colors">
-                  <Camera className="h-3 w-3 text-gray-600" />
+                {profile?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatar} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-blue-800 flex items-center justify-center text-white text-2xl font-bold">
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  {avatarUploading
+                    ? <Loader2 className="h-3 w-3 animate-spin text-gray-600" />
+                    : <Camera className="h-3 w-3 text-gray-600" />}
                 </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">{user?.name}</p>

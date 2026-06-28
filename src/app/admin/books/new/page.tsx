@@ -42,6 +42,7 @@ export default function NewBookPage() {
   const [saving, setSaving] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [ebookFile, setEbookFile] = useState<File | null>(null);
 
   const {
     register,
@@ -60,6 +61,12 @@ export default function NewBookPage() {
     if (!file) return;
     setCoverFile(file);
     setCoverPreview(URL.createObjectURL(file));
+  };
+
+  const handleEbookChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEbookFile(file);
   };
 
   const onSubmit = async (data: BookFormData) => {
@@ -86,9 +93,13 @@ export default function NewBookPage() {
       if (coverFile && created.id) {
         const formData = new FormData();
         formData.append("file", coverFile);
-        await api.post(`/api/admin/books/${created.id}/cover`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await api.post(`/api/media/books/${created.id}/cover`, formData);
+      }
+
+      if (ebookFile && created.id && (data.type === "EBOOK" || data.type === "BOTH")) {
+        const formData = new FormData();
+        formData.append("file", ebookFile);
+        await api.post(`/api/media/books/${created.id}/ebook`, formData);
       }
 
       toast({ variant: "success", title: "Livro criado com sucesso!" });
@@ -141,6 +152,27 @@ export default function NewBookPage() {
             </label>
           </div>
         </div>
+
+        {(bookType === "EBOOK" || bookType === "BOTH") && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Ficheiro Ebook</label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Upload className="h-4 w-4" />
+                {ebookFile ? ebookFile.name : "Seleccionar PDF ou EPUB"}
+              </div>
+              <input
+                type="file"
+                accept=".pdf,.epub,application/pdf,application/epub+zip"
+                className="hidden"
+                onChange={handleEbookChange}
+              />
+            </label>
+            {ebookFile && (
+              <p className="text-xs text-gray-500 mt-1">{(ebookFile.size / 1024 / 1024).toFixed(1)} MB</p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4">
           <Input

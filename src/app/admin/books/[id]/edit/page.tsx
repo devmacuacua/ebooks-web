@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Upload, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
@@ -34,6 +34,9 @@ export default function EditBookPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [ebookFile, setEbookFile] = useState<File | null>(null);
 
   const {
     register,
@@ -69,10 +72,36 @@ export default function EditBookPage() {
     fetchBook();
   }, [id, reset, router, toast]);
 
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  };
+
+  const handleEbookChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEbookFile(file);
+  };
+
   const onSubmit = async (data: EditFormData) => {
     setSaving(true);
     try {
       await api.put(`/api/admin/books/${id}`, data);
+
+      if (coverFile) {
+        const formData = new FormData();
+        formData.append("file", coverFile);
+        await api.post(`/api/media/books/${id}/cover`, formData);
+      }
+
+      if (ebookFile && (book?.type === "EBOOK" || book?.type === "BOTH")) {
+        const formData = new FormData();
+        formData.append("file", ebookFile);
+        await api.post(`/api/media/books/${id}/ebook`, formData);
+      }
+
       toast({ variant: "success", title: "Livro actualizado!" });
       router.push("/admin/books");
     } catch {
@@ -105,6 +134,50 @@ export default function EditBookPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Cover upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Capa</label>
+          <div className="flex items-start gap-4">
+            <div className="relative h-32 w-24 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+              {coverPreview || book?.coverImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverPreview ?? book!.coverImageUrl!} alt="Capa" className="h-full w-full object-cover" />
+              ) : (
+                <BookOpen className="h-8 w-8 text-gray-300" />
+              )}
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer mt-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Upload className="h-4 w-4" />
+                {coverFile ? coverFile.name : "Substituir imagem"}
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
+            </label>
+          </div>
+        </div>
+
+        {/* Ebook file upload */}
+        {(book?.type === "EBOOK" || book?.type === "BOTH") && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Ficheiro Ebook</label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Upload className="h-4 w-4" />
+                {ebookFile ? ebookFile.name : "Substituir PDF ou EPUB"}
+              </div>
+              <input
+                type="file"
+                accept=".pdf,.epub,application/pdf,application/epub+zip"
+                className="hidden"
+                onChange={handleEbookChange}
+              />
+            </label>
+            {ebookFile && (
+              <p className="text-xs text-gray-500 mt-1">{(ebookFile.size / 1024 / 1024).toFixed(1)} MB</p>
+            )}
+          </div>
+        )}
+
         <Input
           label="Título *"
           error={errors.title?.message}
