@@ -90,16 +90,26 @@ export default function NewBookPage() {
 
       const { data: created } = await api.post<{ id: string }>("/api/admin/books", payload);
 
+      const mediaUpdates: Record<string, unknown> = {};
+
       if (coverFile && created.id) {
         const formData = new FormData();
         formData.append("file", coverFile);
-        await api.post(`/api/media/books/${created.id}/cover`, formData);
+        await api.post(`/api/admin/books/${created.id}/cover`, formData);
       }
 
       if (ebookFile && created.id && (data.type === "EBOOK" || data.type === "BOTH")) {
         const formData = new FormData();
         formData.append("file", ebookFile);
-        await api.post(`/api/media/books/${created.id}/ebook`, formData);
+        const { data: ebookData } = await api.post<{ objectKey: string; sizeBytes: number; format: string }>(
+          `/api/media/books/${created.id}/ebook`, formData
+        );
+        mediaUpdates.fileKey = ebookData.objectKey;
+        mediaUpdates.format = ebookData.format;
+      }
+
+      if (Object.keys(mediaUpdates).length > 0) {
+        await api.put(`/api/admin/books/${created.id}`, mediaUpdates);
       }
 
       toast({ variant: "success", title: "Livro criado com sucesso!" });

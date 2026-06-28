@@ -93,13 +93,16 @@ export default function EditBookPage() {
       if (coverFile) {
         const formData = new FormData();
         formData.append("file", coverFile);
-        await api.post(`/api/media/books/${id}/cover`, formData);
+        await api.post(`/api/admin/books/${id}/cover`, formData);
       }
 
       if (ebookFile && (book?.type === "EBOOK" || book?.type === "BOTH")) {
         const formData = new FormData();
         formData.append("file", ebookFile);
-        await api.post(`/api/media/books/${id}/ebook`, formData);
+        const { data: ebookData } = await api.post<{ objectKey: string; format: string }>(
+          `/api/media/books/${id}/ebook`, formData
+        );
+        await api.put(`/api/admin/books/${id}`, { fileKey: ebookData.objectKey, format: ebookData.format });
       }
 
       toast({ variant: "success", title: "Livro actualizado!" });
