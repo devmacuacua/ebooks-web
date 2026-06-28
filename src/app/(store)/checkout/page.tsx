@@ -216,6 +216,7 @@ function CheckoutContent() {
 
     try {
       const result = await createOrder.mutateAsync({
+        items,
         addressId: selectedAddressId || undefined,
         paymentMethod: selectedMethod!,
         phoneNumber,
@@ -231,6 +232,7 @@ function CheckoutContent() {
   const handleStripePayment = async (paymentMethodId: string) => {
     try {
       const result = await createOrder.mutateAsync({
+        items,
         addressId: selectedAddressId || undefined,
         paymentMethod: "VISA",
         stripePaymentMethodId: paymentMethodId,

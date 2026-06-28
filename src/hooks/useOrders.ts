@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { Order, Address, PaymentMethod, PaginatedResponse } from "@/types";
+import type { Order, Address, CartItem, PaymentMethod, PaginatedResponse } from "@/types";
 import { useToast } from "@/components/ui/toast";
 
 export function useOrders(page = 0, size = 10) {
@@ -34,12 +34,27 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (payload: {
+      items: CartItem[];
       addressId?: string;
       paymentMethod: PaymentMethod;
       phoneNumber?: string;
       stripePaymentMethodId?: string;
     }) => {
-      const { data } = await api.post<{ orderId: string; paymentId: string }>("/api/commerce/orders", payload);
+      const body = {
+        items: payload.items.map((i) => ({
+          bookId: i.bookId,
+          bookTitle: i.title,
+          bookType: i.type,
+          bookCover: i.coverImageUrl,
+          price: i.price,
+          quantity: i.quantity,
+        })),
+        addressId: payload.addressId,
+        paymentMethod: payload.paymentMethod,
+        phoneNumber: payload.phoneNumber,
+        stripePaymentMethodId: payload.stripePaymentMethodId,
+      };
+      const { data } = await api.post<{ orderId: string; paymentId: string }>("/api/commerce/orders", body);
       return data;
     },
     onSuccess: () => {
