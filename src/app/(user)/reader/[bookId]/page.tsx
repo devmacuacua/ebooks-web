@@ -15,6 +15,9 @@ import {
   AlertCircle,
   X,
   WifiOff,
+  Bookmark,
+  BookmarkCheck,
+  List,
 } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { getDeviceId } from "@/lib/auth";
@@ -24,6 +27,7 @@ import {
   useOnlineStatus,
   queueProgressSync,
 } from "@/hooks/useOfflineReader";
+import { useBookmarks, useAddBookmark, useRemoveBookmark } from "@/hooks/useBookmarks";
 import type { DrmTokenResponse, DrmPageResponse } from "@/types";
 
 type Theme = "white" | "sepia" | "dark";
@@ -83,8 +87,14 @@ function ReaderContent() {
   const [pageReady, setPageReady] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [theme, setTheme] = useState<Theme>("white");
+
+  const { data: bookmarks = [] } = useBookmarks(bookId);
+  const addBookmark = useAddBookmark(bookId);
+  const removeBookmark = useRemoveBookmark(bookId);
+  const currentPageBookmark = bookmarks.find((b) => b.pageNumber === currentPage);
   const [pageInput, setPageInput] = useState("1");
   const deviceId = useRef<string>("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -332,6 +342,37 @@ function ReaderContent() {
           <span className="text-xs text-gray-400 hidden sm:block">{progress.toFixed(0)}%</span>
 
           <button
+            onClick={() => {
+              if (currentPageBookmark) {
+                removeBookmark.mutate(currentPageBookmark.id);
+              } else {
+                addBookmark.mutate({ pageNumber: currentPage });
+              }
+            }}
+            disabled={addBookmark.isPending || removeBookmark.isPending}
+            className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
+            aria-label={currentPageBookmark ? "Remover marcador" : "Adicionar marcador"}
+          >
+            {currentPageBookmark
+              ? <BookmarkCheck className="h-4 w-4 text-orange-400" />
+              : <Bookmark className="h-4 w-4 text-gray-300" />
+            }
+          </button>
+
+          <button
+            onClick={() => setShowBookmarks(!showBookmarks)}
+            className="p-1.5 rounded-md hover:bg-gray-700 transition-colors relative"
+            aria-label="Lista de marcadores"
+          >
+            <List className="h-4 w-4 text-gray-300" />
+            {bookmarks.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-orange-400 text-[9px] font-bold text-white">
+                {bookmarks.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
             aria-label="Definições"
@@ -340,6 +381,43 @@ function ReaderContent() {
           </button>
         </div>
       </div>
+
+      {/* Bookmarks panel */}
+      {showBookmarks && (
+        <div className="absolute top-12 right-4 z-50 bg-white rounded-xl shadow-2xl p-4 w-64 border border-gray-200 max-h-80 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Marcadores ({bookmarks.length})</h3>
+            <button onClick={() => setShowBookmarks(false)}>
+              <X className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+          {bookmarks.length === 0 ? (
+            <p className="text-xs text-gray-400 py-4 text-center">Sem marcadores neste livro.</p>
+          ) : (
+            <ul className="overflow-y-auto space-y-1">
+              {bookmarks.map((bm) => (
+                <li key={bm.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50">
+                  <button
+                    className="flex items-center gap-2 flex-1 text-left"
+                    onClick={() => { goToPage(bm.pageNumber); setShowBookmarks(false); }}
+                  >
+                    <BookmarkCheck className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                    <span className="text-xs text-gray-700">
+                      {bm.label || `Página ${bm.pageNumber}`}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => removeBookmark.mutate(bm.id)}
+                    className="text-gray-300 hover:text-red-400 shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Settings panel */}
       {showSettings && (
