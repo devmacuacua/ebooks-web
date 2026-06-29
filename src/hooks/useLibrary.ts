@@ -62,6 +62,7 @@ export function useLibrary() {
       const { data } = await api.get<ReadingServiceEntry[]>("/api/reading/library");
       return data.map(adaptLibraryEntry);
     },
+    enabled: isAuthenticated(),
     staleTime: 60_000,
   });
 }

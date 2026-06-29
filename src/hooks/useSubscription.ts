@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 import type { Subscription, SubscriptionPlan, PaymentMethod } from "@/types";
 import { useToast } from "@/components/ui/toast";
 
@@ -22,10 +23,12 @@ export function useSubscription() {
         const { data } = await api.get<Subscription>("/api/subscriptions/me");
         return data;
       } catch (e: unknown) {
-        if ((e as { response?: { status?: number } }).response?.status === 404) return null;
+        const status = (e as { response?: { status?: number } }).response?.status;
+        if (status === 404 || status === 401) return null;
         throw e;
       }
     },
+    enabled: isAuthenticated(),
     staleTime: 60_000,
   });
 }
