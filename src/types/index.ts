@@ -29,6 +29,27 @@ export interface Category {
 
 // ─── Book ─────────────────────────────────────────────────────────────────────
 export type BookType = "PHYSICAL" | "EBOOK" | "BOTH";
+export type BookSubmissionStatus = "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+
+export interface BookSubmission {
+  id: string;
+  title: string;
+  description: string;
+  isbn?: string;
+  price: number;
+  type: BookType;
+  language: string;
+  publisher?: string;
+  pageCount?: number;
+  stockQuantity?: number;
+  coverUrl?: string;
+  status: BookSubmissionStatus;
+  parecer?: string;
+  reviewedAt?: string;
+  submittedAt: string;
+  partnerName?: string;
+  partnerId?: string;
+}
 
 export interface BookSummary {
   id: string;
