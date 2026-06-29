@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useCart } from "@/hooks/useCart";
 import { useCreateOrder, useAddresses, useSaveAddress } from "@/hooks/useOrders";
+import { useDeliveryFee } from "@/hooks/useDeliveryFee";
 import { useToast } from "@/components/ui/toast";
 import { formatMZN } from "@/lib/api";
 import api from "@/lib/api";
@@ -122,7 +123,7 @@ function StripeCardForm({
 // ─── Main Checkout ─────────────────────────────────────────────────────────────
 function CheckoutContent() {
   const router = useRouter();
-  const { items, subtotal, deliveryFee, total, clearCart } = useCart();
+  const { items, subtotal, clearCart } = useCart();
   const { data: addresses } = useAddresses();
   const createOrder = useCreateOrder();
   const saveAddress = useSaveAddress();
@@ -159,6 +160,12 @@ function CheckoutContent() {
       setSelectedAddressId(def.id);
     }
   }, [addresses, selectedAddressId]);
+
+  const hasPhysical = items.some((i) => i.type === "PHYSICAL" || i.type === "BOTH");
+  const selectedAddress = addresses?.find((a) => a.id === selectedAddressId);
+  const { data: feeData } = useDeliveryFee(hasPhysical ? selectedAddress?.province : undefined);
+  const deliveryFee = hasPhysical ? (feeData?.fee ?? 150) : 0;
+  const total = subtotal + deliveryFee;
 
   // Poll payment status for M-Pesa / E-mola
   const pollPaymentStatus = useCallback(async (pid: string) => {
@@ -361,9 +368,6 @@ function CheckoutContent() {
       </div>
     );
   }
-
-  // ── Method selection ────────────────────────────────────────────────────────
-  const hasPhysical = items.some((i) => i.type === "PHYSICAL" || i.type === "BOTH");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

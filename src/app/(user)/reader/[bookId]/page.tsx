@@ -18,6 +18,7 @@ import {
   Bookmark,
   BookmarkCheck,
   List,
+  StickyNote,
 } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { getDeviceId } from "@/lib/auth";
@@ -28,6 +29,7 @@ import {
   queueProgressSync,
 } from "@/hooks/useOfflineReader";
 import { useBookmarks, useAddBookmark, useRemoveBookmark } from "@/hooks/useBookmarks";
+import { useAnnotations, useUpsertAnnotation, useDeleteAnnotation } from "@/hooks/useAnnotations";
 import type { DrmTokenResponse, DrmPageResponse } from "@/types";
 
 type Theme = "white" | "sepia" | "dark";
@@ -95,6 +97,13 @@ function ReaderContent() {
   const addBookmark = useAddBookmark(bookId);
   const removeBookmark = useRemoveBookmark(bookId);
   const currentPageBookmark = bookmarks.find((b) => b.pageNumber === currentPage);
+
+  const [showAnnotation, setShowAnnotation] = useState(false);
+  const [annotationText, setAnnotationText] = useState("");
+  const { data: annotations = [] } = useAnnotations(bookId);
+  const upsertAnnotation = useUpsertAnnotation(bookId);
+  const deleteAnnotation = useDeleteAnnotation(bookId);
+  const currentAnnotation = annotations.find((a) => a.pageNumber === currentPage);
   const [pageInput, setPageInput] = useState("1");
   const deviceId = useRef<string>("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -228,6 +237,13 @@ function ReaderContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingInit, offlineMode, drmToken]);
+
+  // Sync annotation textarea when page changes
+  useEffect(() => {
+    setAnnotationText(currentAnnotation?.content ?? "");
+    setShowAnnotation(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   // Re-render current page with new zoom without refetching from the API
   useEffect(() => {
@@ -373,6 +389,17 @@ function ReaderContent() {
           </button>
 
           <button
+            onClick={() => {
+              setAnnotationText(currentAnnotation?.content ?? "");
+              setShowAnnotation(!showAnnotation);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-700 transition-colors relative"
+            aria-label="Nota da página"
+          >
+            <StickyNote className={`h-4 w-4 ${currentAnnotation ? "text-yellow-400" : "text-gray-300"}`} />
+          </button>
+
+          <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
             aria-label="Definições"
@@ -381,6 +408,51 @@ function ReaderContent() {
           </button>
         </div>
       </div>
+
+      {/* Annotation panel */}
+      {showAnnotation && (
+        <div className="absolute top-12 right-4 z-50 bg-white rounded-xl shadow-2xl p-4 w-72 border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Nota — Página {currentPage}</h3>
+            <button onClick={() => setShowAnnotation(false)}>
+              <X className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+          <textarea
+            value={annotationText}
+            onChange={(e) => setAnnotationText(e.target.value)}
+            placeholder="Escreve uma nota para esta página..."
+            rows={4}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
+          <div className="flex justify-between mt-3 gap-2">
+            {currentAnnotation && (
+              <button
+                onClick={() => {
+                  deleteAnnotation.mutate(currentAnnotation.id);
+                  setAnnotationText("");
+                  setShowAnnotation(false);
+                }}
+                className="text-xs text-red-500 hover:underline"
+              >
+                Apagar
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (annotationText.trim()) {
+                  upsertAnnotation.mutate({ pageNumber: currentPage, content: annotationText.trim() });
+                }
+                setShowAnnotation(false);
+              }}
+              disabled={upsertAnnotation.isPending}
+              className="ml-auto text-xs bg-blue-800 text-white px-3 py-1.5 rounded-lg hover:bg-blue-900 disabled:opacity-50"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bookmarks panel */}
       {showBookmarks && (
