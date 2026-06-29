@@ -4,7 +4,35 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
-import type { BookSubmission, BookSubmissionStatus, BookType, PaginatedResponse } from "@/types";
+import type { BookSubmission, BookSubmissionStatus, BookType, PaginatedResponse, BookType as BT } from "@/types";
+
+// Backend BookResponse uses "PUBLISHED" where frontend expects "APPROVED"
+function adaptStatus(s: string): BookSubmissionStatus {
+  if (s === "PUBLISHED") return "APPROVED";
+  if (s === "PENDING_REVIEW" || s === "REJECTED") return s;
+  return "PENDING_REVIEW";
+}
+
+function adaptBookResponse(b: Record<string, unknown>): BookSubmission {
+  return {
+    id: b.id as string,
+    title: b.title as string,
+    description: b.description as string,
+    isbn: b.isbn as string | undefined,
+    price: b.price as number,
+    type: b.type as BT,
+    language: b.language as string,
+    publisher: b.publisher as string | undefined,
+    pageCount: b.pageCount as number | undefined,
+    stockQuantity: b.stockQuantity as number | undefined,
+    coverUrl: b.coverImageUrl as string | undefined,
+    status: adaptStatus(b.status as string),
+    parecer: b.parecer as string | undefined,
+    submittedAt: (b.submittedAt ?? b.createdAt) as string,
+    partnerName: b.partnerName as string | undefined,
+    partnerId: b.partnerId as string | undefined,
+  };
+}
 
 // ── Partner: list my submissions ──────────────────────────────────────────────
 
@@ -12,8 +40,10 @@ export function useMySubmissions(enabled = true) {
   return useQuery<BookSubmission[]>({
     queryKey: ["my-book-submissions"],
     queryFn: async () => {
-      const { data } = await api.get<BookSubmission[]>("/api/partner/books/submissions");
-      return data;
+      const { data } = await api.get<PaginatedResponse<Record<string, unknown>>>(
+        "/api/partner/books/submissions"
+      );
+      return data.content.map(adaptBookResponse);
     },
     enabled: enabled && isAuthenticated(),
     staleTime: 30_000,
@@ -54,7 +84,7 @@ export function useSubmitBook() {
       if (coverFile) {
         const fd = new FormData();
         fd.append("file", coverFile);
-        await api.post(`/api/media/submissions/${submission.id}/cover`, fd, {
+        await api.post(`/api/media/books/${submission.id}/cover`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -62,7 +92,7 @@ export function useSubmitBook() {
       if (ebookFile && (meta.type === "EBOOK" || meta.type === "BOTH")) {
         const fd = new FormData();
         fd.append("file", ebookFile);
-        await api.post(`/api/media/submissions/${submission.id}/ebook`, fd, {
+        await api.post(`/api/media/books/${submission.id}/ebook`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -89,15 +119,21 @@ export function useSubmitBook() {
 // ── Admin: list submissions ───────────────────────────────────────────────────
 
 export function useAdminSubmissions(status?: BookSubmissionStatus, page = 0) {
+  // Map frontend status "APPROVED" back to backend "PUBLISHED" for the query param
+  const backendStatus = status === "APPROVED" ? "PUBLISHED" : status;
+
   return useQuery<PaginatedResponse<BookSubmission>>({
     queryKey: ["admin-submissions", status, page],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), size: "20" });
-      if (status) params.set("status", status);
-      const { data } = await api.get<PaginatedResponse<BookSubmission>>(
+      if (backendStatus) params.set("status", backendStatus);
+      const { data } = await api.get<PaginatedResponse<Record<string, unknown>>>(
         `/api/admin/books/submissions?${params}`
       );
-      return data;
+      return {
+        ...data,
+        content: data.content.map(adaptBookResponse),
+      } as PaginatedResponse<BookSubmission>;
     },
     staleTime: 15_000,
   });
