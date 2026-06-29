@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Crown, Calendar, Smartphone, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { AuthGuard } from "@/components/auth/AuthGuard";
 import { usePlans, useSubscription, useSubscribe, useCancelSubscription } from "@/hooks/useSubscription";
+import { isAuthenticated } from "@/lib/auth";
 import { formatMZN } from "@/lib/api";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,10 +21,12 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string }[] = [
 ];
 
 function SubscriptionContent() {
+  const router = useRouter();
   const { data: plans, isLoading: loadingPlans } = usePlans();
   const { data: subscription } = useSubscription();
   const subscribe = useSubscribe();
   const cancelSubscription = useCancelSubscription();
+  const loggedIn = isAuthenticated();
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("MPESA");
@@ -32,6 +35,7 @@ function SubscriptionContent() {
 
   const handleSubscribe = () => {
     if (!selectedPlan) return;
+    if (!loggedIn) { router.push("/login?redirect=/subscription"); return; }
     subscribe.mutate({
       planId: selectedPlan,
       method: selectedMethod,
@@ -223,7 +227,8 @@ function SubscriptionContent() {
                 onClick={handleSubscribe}
                 loading={subscribe.isPending}
               >
-                <Crown className="h-4 w-4" /> Activar Subscrição
+                <Crown className="h-4 w-4" />
+                {loggedIn ? "Activar Subscrição" : "Entrar para subscrever"}
               </Button>
             </div>
           )}
@@ -280,9 +285,5 @@ function SubscriptionContent() {
 }
 
 export default function SubscriptionPage() {
-  return (
-    <AuthGuard>
-      <SubscriptionContent />
-    </AuthGuard>
-  );
+  return <SubscriptionContent />;
 }

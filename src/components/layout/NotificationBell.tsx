@@ -153,7 +153,7 @@ export function NotificationBell({ userId }: { userId: string }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-xs font-medium text-gray-900 ${!n.isRead ? "font-semibold" : ""}`}>
+                      <p className={`text-xs text-gray-900 ${!n.isRead ? "font-semibold" : "font-medium"}`}>
                         {n.title}
                       </p>
                       {!n.isRead && (

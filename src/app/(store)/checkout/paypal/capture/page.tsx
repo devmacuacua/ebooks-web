@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 type CaptureState = "loading" | "success" | "error";
 
-export default function PayPalCapturePage() {
+const TIMEOUT_MS = 30_000;
+
+function PayPalCaptureContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const attempted = useRef(false);
@@ -24,19 +27,31 @@ export default function PayPalCapturePage() {
       return;
     }
 
+    const timeoutId = setTimeout(() => {
+      setState((prev) => {
+        if (prev !== "loading") return prev;
+        setErrorMessage("Tempo limite excedido. Por favor verifique as suas encomendas.");
+        return "error";
+      });
+    }, TIMEOUT_MS);
+
     api
       .post(`/api/commerce/payments/capture/paypal?orderId=${encodeURIComponent(token)}`)
       .then(() => {
+        clearTimeout(timeoutId);
         setState("success");
         setTimeout(() => router.push("/orders"), 2500);
       })
       .catch((err: unknown) => {
+        clearTimeout(timeoutId);
         const msg =
           (err as { response?: { data?: { message?: string } } }).response?.data
             ?.message || "Não foi possível confirmar o pagamento.";
         setState("error");
         setErrorMessage(msg);
       });
+
+    return () => clearTimeout(timeoutId);
   }, [searchParams, router]);
 
   if (state === "loading") {
@@ -70,5 +85,21 @@ export default function PayPalCapturePage() {
         Tentar novamente
       </button>
     </div>
+  );
+}
+
+export default function PayPalCapturePage() {
+  return (
+    <AuthGuard>
+      <Suspense
+        fallback={
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="h-10 w-10 rounded-full border-4 border-blue-800 border-t-transparent animate-spin" />
+          </div>
+        }
+      >
+        <PayPalCaptureContent />
+      </Suspense>
+    </AuthGuard>
   );
 }

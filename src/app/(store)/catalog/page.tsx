@@ -1,12 +1,15 @@
 "use client";
 
-import React, { Suspense, useState, useCallback } from "react";
+import React, { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Filter, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { BookCard } from "@/components/books/BookCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBooks } from "@/hooks/useBooks";
+import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
+import { isAuthenticated } from "@/lib/auth";
+import { useToast } from "@/components/ui/toast";
 import type { BookType, CatalogFilters } from "@/types";
 
 const CATEGORIES = [
@@ -27,50 +30,15 @@ const TYPE_OPTIONS: { value: BookType | ""; label: string }[] = [
   { value: "BOTH", label: "Físico + Ebook" },
 ];
 
-function CatalogContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+interface SidebarProps {
+  filters: CatalogFilters;
+  updateFilter: <K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) => void;
+  toggleCategory: (id: string) => void;
+  clearFilters: () => void;
+}
 
-  const [filters, setFilters] = useState<CatalogFilters>({
-    search: searchParams.get("search") || undefined,
-    type: (searchParams.get("type") as BookType) || undefined,
-    categories: searchParams.get("categories")?.split(",").filter(Boolean) || [],
-    minPrice: undefined,
-    maxPrice: undefined,
-    subscriptionOnly: false,
-    page: 0,
-    size: 20,
-    sort: searchParams.get("sort") || "title",
-  });
-
-  const { data, isLoading } = useBooks(filters);
-
-  const updateFilter = useCallback(<K extends keyof CatalogFilters>(
-    key: K,
-    value: CatalogFilters[K]
-  ) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 0 }));
-  }, []);
-
-  const toggleCategory = (id: string) => {
-    setFilters((prev) => {
-      const current = prev.categories || [];
-      const next = current.includes(id)
-        ? current.filter((c) => c !== id)
-        : [...current, id];
-      return { ...prev, categories: next, page: 0 };
-    });
-  };
-
-  const clearFilters = () => {
-    setFilters({ page: 0, size: 20, sort: "title" });
-  };
-
-  const totalPages = data?.totalPages || 0;
-  const currentPage = filters.page || 0;
-
-  const Sidebar = () => (
+function Sidebar({ filters, updateFilter, toggleCategory, clearFilters }: SidebarProps) {
+  return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-900">Filtros</h3>
@@ -158,6 +126,86 @@ function CatalogContent() {
       </div>
     </div>
   );
+}
+
+function CatalogContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [filters, setFilters] = useState<CatalogFilters>({
+    search: searchParams.get("search") || undefined,
+    type: (searchParams.get("type") as BookType) || undefined,
+    categories: searchParams.get("categories")?.split(",").filter(Boolean) || [],
+    minPrice: undefined,
+    maxPrice: undefined,
+    subscriptionOnly: false,
+    page: 0,
+    size: 20,
+    sort: searchParams.get("sort") || "title",
+  });
+
+  // Sync active filters to URL so pages are shareable and back-button works
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set("search", filters.search);
+    if (filters.type) params.set("type", filters.type);
+    if (filters.categories?.length) params.set("categories", filters.categories.join(","));
+    if (filters.sort && filters.sort !== "title") params.set("sort", filters.sort);
+    const qs = params.toString();
+    router.replace(qs ? `/catalog?${qs}` : "/catalog", { scroll: false });
+  }, [filters.search, filters.type, filters.categories, filters.sort, router]);
+
+  const { data, isLoading } = useBooks(filters);
+  const loggedIn = isAuthenticated();
+  const { data: wishlistItems } = useWishlist();
+  const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
+  const { toast } = useToast();
+
+  const wishlistIds = new Set((wishlistItems ?? []).map((i) => i.bookId));
+
+  const handleWishlistToggle = async (
+    e: React.MouseEvent,
+    book: { id: string; slug: string; title: string; coverImageUrl?: string; price: number },
+  ) => {
+    e.preventDefault();
+    if (!loggedIn) { toast({ title: "Inicia sessão para usar a lista de desejos", variant: "destructive" }); return; }
+    try {
+      if (wishlistIds.has(book.id)) {
+        await removeWishlist.mutateAsync(book.id);
+        toast({ title: "Removido da lista de desejos" });
+      } else {
+        await addWishlist.mutateAsync({ bookId: book.id, bookSlug: book.slug, bookTitle: book.title, coverImage: book.coverImageUrl, price: book.price });
+        toast({ title: "Adicionado à lista de desejos" });
+      }
+    } catch {
+      toast({ title: "Erro ao actualizar lista de desejos", variant: "destructive" });
+    }
+  };
+
+  const updateFilter = useCallback(<K extends keyof CatalogFilters>(
+    key: K,
+    value: CatalogFilters[K]
+  ) => {
+    setFilters((prev) => ({ ...prev, [key]: value, page: 0 }));
+  }, []);
+
+  const toggleCategory = (id: string) => {
+    setFilters((prev) => {
+      const current = prev.categories || [];
+      const next = current.includes(id)
+        ? current.filter((c) => c !== id)
+        : [...current, id];
+      return { ...prev, categories: next, page: 0 };
+    });
+  };
+
+  const clearFilters = () => {
+    setFilters({ page: 0, size: 20, sort: "title" });
+  };
+
+  const totalPages = data?.totalPages || 0;
+  const currentPage = filters.page || 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -241,7 +289,12 @@ function CatalogContent() {
         {/* Sidebar Desktop */}
         <aside className="hidden lg:block w-56 shrink-0">
           <div className="sticky top-20 rounded-xl border border-gray-200 bg-white p-5">
-            <Sidebar />
+            <Sidebar
+              filters={filters}
+              updateFilter={updateFilter}
+              toggleCategory={toggleCategory}
+              clearFilters={clearFilters}
+            />
           </div>
         </aside>
 
@@ -261,7 +314,12 @@ function CatalogContent() {
                   ×
                 </button>
               </div>
-              <Sidebar />
+              <Sidebar
+                filters={filters}
+                updateFilter={updateFilter}
+                toggleCategory={toggleCategory}
+                clearFilters={clearFilters}
+              />
             </div>
           </div>
         )}
@@ -286,7 +344,12 @@ function CatalogContent() {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
                 {data?.content.map((book) => (
-                  <BookCard key={book.id} {...book} />
+                  <BookCard
+                    key={book.id}
+                    {...book}
+                    inWishlist={wishlistIds.has(book.id)}
+                    onWishlistToggle={(e) => handleWishlistToggle(e, { id: book.id, slug: book.slug, title: book.title, coverImageUrl: book.coverImageUrl, price: book.price })}
+                  />
                 ))}
               </div>
 

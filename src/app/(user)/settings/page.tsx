@@ -106,6 +106,7 @@ function SettingsContent() {
     setSavingProfile(true);
     try {
       await api.put("/api/users/profile", data);
+      await queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       toast({ variant: "success", title: "Perfil actualizado!" });
     } catch {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível guardar as alterações." });

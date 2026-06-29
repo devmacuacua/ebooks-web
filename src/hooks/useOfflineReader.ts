@@ -47,21 +47,19 @@ export function useSyncOnResume() {
 
     const sync = async () => {
       wasSyncing.current = true;
-
-      // Try native Background Sync first
-      if ('serviceWorker' in navigator && 'SyncManager' in window) {
-        const reg = await navigator.serviceWorker.ready;
-        try {
-          await (reg as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('sync-reading-progress');
-          wasSyncing.current = false;
-          return;
-        } catch {
-          // Fall through to manual sync
-        }
-      }
-
-      // Manual fallback: flush pending progress
       try {
+        // Try native Background Sync first
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            await (reg as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('sync-reading-progress');
+            return;
+          } catch {
+            // Fall through to manual sync
+          }
+        }
+
+        // Manual fallback: flush pending progress
         const pending = await getAllPendingProgress();
         await Promise.all(
           pending.map(async (p) => {

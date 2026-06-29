@@ -37,7 +37,7 @@ export function useProfile() {
   });
 }
 
-export function useLogin() {
+export function useLogin(redirectTo = "/library") {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -49,7 +49,7 @@ export function useLogin() {
     onSuccess: (data) => {
       setTokens(data.accessToken, data.refreshToken);
       toast({ variant: "success", title: "Bem-vindo!", description: "Sessão iniciada com sucesso." });
-      router.push("/library");
+      router.push(redirectTo);
     },
     onError: (error: unknown) => {
       const msg =
@@ -67,13 +67,6 @@ export function useRegister() {
     mutationFn: async (data: RegisterRequest) => {
       const { data: response } = await api.post("/api/auth/register", data);
       return response;
-    },
-    onSuccess: () => {
-      toast({
-        variant: "success",
-        title: "Conta criada!",
-        description: "Verifique o seu email para activar a conta.",
-      });
     },
     onError: (error: unknown) => {
       const msg =

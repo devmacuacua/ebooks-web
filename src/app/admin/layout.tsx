@@ -17,8 +17,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { clearTokens } from "@/lib/auth";
-import { useRouter } from "next/navigation";
+import { useLogout } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,13 +32,8 @@ const NAV_ITEMS = [
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const handleLogout = () => {
-    clearTokens();
-    router.push("/login");
-  };
+  const logout = useLogout();
 
   const Sidebar = ({ mobile = false }) => (
     <nav className={`flex flex-col h-full ${mobile ? "" : ""}`}>
@@ -74,7 +68,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Logout */}
       <div className="px-3 py-4 border-t border-gray-200">
         <button
-          onClick={handleLogout}
+          onClick={logout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
         >
           <LogOut className="h-4 w-4" />

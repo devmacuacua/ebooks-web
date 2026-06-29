@@ -36,7 +36,8 @@ const THEMES: Record<Theme, { bg: string; text: string; label: string }> = {
 
 async function renderPdfToCanvas(
   canvas: HTMLCanvasElement,
-  pdfBase64: string
+  pdfBase64: string,
+  zoom = 1
 ): Promise<void> {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -55,7 +56,7 @@ async function renderPdfToCanvas(
   const maxH = container ? container.clientHeight : window.innerHeight - 112;
 
   const viewport = page.getViewport({ scale: 1 });
-  const scale = Math.min(maxW / viewport.width, maxH / viewport.height);
+  const scale = Math.min(maxW / viewport.width, maxH / viewport.height) * zoom;
   const scaled = page.getViewport({ scale });
 
   canvas.width = scaled.width;
@@ -82,12 +83,13 @@ function ReaderContent() {
   const [pageReady, setPageReady] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
-  const [fontSize, setFontSize] = useState(16);
+  const [zoom, setZoom] = useState(1);
   const [theme, setTheme] = useState<Theme>("white");
   const [pageInput, setPageInput] = useState("1");
   const deviceId = useRef<string>("");
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const initialPageFetched = useRef(false);
+  const lastPdfBase64 = useRef<string | null>(null);
 
   // Initialize reading session
   useEffect(() => {
@@ -141,14 +143,15 @@ function ReaderContent() {
   }, [bookId]);
 
   const fetchPage = useCallback(
-    async (page: number, token: string | null) => {
+    async (page: number, token: string | null, zoomOverride?: number) => {
       setLoadingPage(true);
       setPageReady(false);
       try {
         if (offlineMode || !isOnline) {
           const cached = await getCachedPage(bookId, page);
           if (cached && canvasRef.current) {
-            await renderPdfToCanvas(canvasRef.current, cached.pdfBase64);
+            lastPdfBase64.current = cached.pdfBase64;
+            await renderPdfToCanvas(canvasRef.current, cached.pdfBase64, zoomOverride ?? zoom);
             setPageReady(true);
             setCurrentPage(page);
             setPageInput(String(page));
@@ -165,8 +168,10 @@ function ReaderContent() {
           { params: { token, deviceId: deviceId.current } }
         );
 
+        lastPdfBase64.current = response.data.pdfBase64;
+
         if (canvasRef.current) {
-          await renderPdfToCanvas(canvasRef.current, response.data.pdfBase64);
+          await renderPdfToCanvas(canvasRef.current, response.data.pdfBase64, zoomOverride ?? zoom);
           setPageReady(true);
         }
 
@@ -201,7 +206,7 @@ function ReaderContent() {
         setLoadingPage(false);
       }
     },
-    [bookId, offlineMode, isOnline, totalPages]
+    [bookId, offlineMode, isOnline, totalPages, zoom]
   );
 
   useEffect(() => {
@@ -213,6 +218,13 @@ function ReaderContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingInit, offlineMode, drmToken]);
+
+  // Re-render current page with new zoom without refetching from the API
+  useEffect(() => {
+    if (!lastPdfBase64.current || !canvasRef.current || !pageReady) return;
+    renderPdfToCanvas(canvasRef.current, lastPdfBase64.current, zoom).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
 
   const goToPage = useCallback(
     (page: number) => {
@@ -340,18 +352,22 @@ function ReaderContent() {
           </div>
 
           <div className="mb-4">
-            <p className="text-xs text-gray-500 mb-2">Tamanho do texto</p>
+            <p className="text-xs text-gray-500 mb-2">Zoom</p>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setFontSize((s) => Math.max(12, s - 2))}
-                className="h-7 w-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                onClick={() => setZoom((z) => Math.max(0.5, parseFloat((z - 0.25).toFixed(2))))}
+                disabled={zoom <= 0.5}
+                className="h-7 w-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"
               >
                 <Minus className="h-3 w-3" />
               </button>
-              <span className="text-sm font-medium text-gray-900 w-8 text-center">{fontSize}</span>
+              <span className="text-sm font-medium text-gray-900 w-12 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
               <button
-                onClick={() => setFontSize((s) => Math.min(28, s + 2))}
-                className="h-7 w-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                onClick={() => setZoom((z) => Math.min(2, parseFloat((z + 0.25).toFixed(2))))}
+                disabled={zoom >= 2}
+                className="h-7 w-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40"
               >
                 <Plus className="h-3 w-3" />
               </button>
@@ -397,7 +413,6 @@ function ReaderContent() {
 
         <div
           className="relative h-full max-h-[calc(100vh-7rem)] flex items-center justify-center mx-14"
-          style={{ fontSize: `${fontSize}px` }}
         >
           {loadingPage ? (
             <Loader2 className="h-8 w-8 text-white animate-spin" />

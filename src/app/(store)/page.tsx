@@ -18,7 +18,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/books/BookCard";
 import { useFeaturedBooks, useNewArrivals } from "@/hooks/useBooks";
+import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
+import { isAuthenticated } from "@/lib/auth";
+import { useToast } from "@/components/ui/toast";
 import { formatMZN } from "@/lib/api";
+import type { BookSummary } from "@/types";
 
 const CATEGORIES = [
   { name: "Romance", icon: Heart, slug: "romance", color: "bg-pink-50 text-pink-700 border-pink-200" },
@@ -64,6 +68,27 @@ export default function HomePage() {
   const router = useRouter();
   const { data: featured, isLoading: loadingFeatured } = useFeaturedBooks();
   const { data: newArrivals, isLoading: loadingNew } = useNewArrivals();
+  const { data: wishlistItems } = useWishlist();
+  const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
+  const { toast } = useToast();
+  const loggedIn = isAuthenticated();
+  const wishlistIds = new Set((wishlistItems ?? []).map((i) => i.bookId));
+
+  const handleWishlistToggle = async (e: React.MouseEvent, book: BookSummary) => {
+    e.preventDefault();
+    if (!loggedIn) { toast({ title: "Inicia sessão para usar a lista de desejos", variant: "destructive" }); return; }
+    try {
+      if (wishlistIds.has(book.id)) {
+        await removeWishlist.mutateAsync(book.id);
+        toast({ title: "Removido da lista de desejos" });
+      } else {
+        await addWishlist.mutateAsync({ bookId: book.id, bookSlug: book.slug, bookTitle: book.title, coverImage: book.coverImageUrl, price: book.price });
+        toast({ title: "Adicionado à lista de desejos" });
+      }
+    } catch {
+      toast({ title: "Erro ao actualizar lista de desejos", variant: "destructive" });
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +177,11 @@ export default function HomePage() {
           <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
             {(featured || []).map((book) => (
               <div key={book.id} className="w-44 shrink-0">
-                <BookCard {...book} />
+                <BookCard
+                  {...book}
+                  inWishlist={wishlistIds.has(book.id)}
+                  onWishlistToggle={(e) => handleWishlistToggle(e, book)}
+                />
               </div>
             ))}
             {(!featured || featured.length === 0) && (
@@ -269,7 +298,12 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {(newArrivals || []).map((book) => (
-                <BookCard key={book.id} {...book} />
+                <BookCard
+                  key={book.id}
+                  {...book}
+                  inWishlist={wishlistIds.has(book.id)}
+                  onWishlistToggle={(e) => handleWishlistToggle(e, book)}
+                />
               ))}
             </div>
           )}

@@ -16,12 +16,14 @@ import {
   Menu,
   X,
   Crown,
+  Heart,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Avatar from "@radix-ui/react-avatar";
-import { getCurrentUser, isAuthenticated, clearTokens } from "@/lib/auth";
+import { getCurrentUser, isAuthenticated } from "@/lib/auth";
 import { useCart } from "@/hooks/useCart";
-import { useProfile } from "@/hooks/useAuth";
+import { useProfile, useLogout } from "@/hooks/useAuth";
+import { useWishlist } from "@/hooks/useWishlist";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { cn } from "@/lib/utils";
 import type { User as UserType } from "@/types";
@@ -49,6 +51,9 @@ export function Header() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { count } = useCart();
   const { data: profile } = useProfile();
+  const { data: wishlistItems } = useWishlist();
+  const wishlistCount = wishlistItems?.length ?? 0;
+  const logout = useLogout();
 
   useEffect(() => {
     setUser(getCurrentUser());
@@ -97,9 +102,8 @@ export function Header() {
   };
 
   const handleLogout = () => {
-    clearTokens();
     setUser(null);
-    router.push("/login");
+    logout();
   };
 
   const initials = user?.name
@@ -241,6 +245,19 @@ export function Header() {
                         className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer outline-none"
                       >
                         <Package className="h-4 w-4" /> As Minhas Encomendas
+                      </Link>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item asChild>
+                      <Link
+                        href="/wishlist"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer outline-none"
+                      >
+                        <Heart className="h-4 w-4 text-red-400" /> Lista de Desejos
+                        {wishlistCount > 0 && (
+                          <span className="ml-auto text-xs font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                            {wishlistCount}
+                          </span>
+                        )}
                       </Link>
                     </DropdownMenu.Item>
                     <DropdownMenu.Item asChild>

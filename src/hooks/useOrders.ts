@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import type { Order, Address, CartItem, PaymentMethod, PaginatedResponse } from "@/types";
 import { useToast } from "@/components/ui/toast";
+import { isAuthenticated } from "@/lib/auth";
 
 export function useOrders(page = 0, size = 10) {
   return useQuery<PaginatedResponse<Order>>({
@@ -13,6 +14,7 @@ export function useOrders(page = 0, size = 10) {
       return data;
     },
     staleTime: 30_000,
+    enabled: isAuthenticated(),
   });
 }
 
@@ -85,6 +87,7 @@ export function useAddresses() {
       return data;
     },
     staleTime: 120_000,
+    enabled: isAuthenticated(),
   });
 }
 

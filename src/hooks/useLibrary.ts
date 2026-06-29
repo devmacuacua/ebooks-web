@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { isAuthenticated } from "@/lib/auth";
 import type { LibraryItem } from "@/types";
 
 interface ReadingServiceEntry {
@@ -71,7 +72,7 @@ export function useBookAccess(bookId: string) {
       const { data } = await api.get(`/api/reading/library/access?bookId=${bookId}`);
       return data;
     },
-    enabled: Boolean(bookId),
+    enabled: Boolean(bookId) && isAuthenticated(),
     staleTime: 60_000,
   });
 }

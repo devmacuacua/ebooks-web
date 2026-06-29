@@ -30,17 +30,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Never intercept: API calls, Next.js internals, non-GET
-  if (
-    request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/_next/') ||
-    url.pathname.startsWith('/__nextjs')
-  ) {
-    return;
-  }
-
-  // Next.js static assets (_next/static) — cache-first
+  // Next.js static chunks are fingerprinted (immutable) — cache-first
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(request).then(
@@ -53,6 +43,16 @@ self.addEventListener('fetch', (event) => {
           })
       )
     );
+    return;
+  }
+
+  // Never intercept: API calls, other Next.js internals, non-GET
+  if (
+    request.method !== 'GET' ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/__nextjs')
+  ) {
     return;
   }
 

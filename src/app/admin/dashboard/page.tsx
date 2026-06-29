@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Package, DollarSign, Users, TrendingUp, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,18 +118,18 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-sm">Acções Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <a
+            <Link
               href="/admin/books/new"
               className="block text-sm text-blue-800 hover:underline"
             >
               + Adicionar novo livro
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/orders"
               className="block text-sm text-blue-800 hover:underline"
             >
               → Ver encomendas pendentes
-            </a>
+            </Link>
           </CardContent>
         </Card>
 

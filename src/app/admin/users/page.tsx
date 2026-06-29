@@ -34,10 +34,12 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
 
   const { data, isLoading } = useQuery<PagedResponse>({
-    queryKey: ["admin-users", page],
+    queryKey: ["admin-users", page, search],
     queryFn: async () => {
+      const params = new URLSearchParams({ page: String(page), size: "20", sort: "createdAt,desc" });
+      if (search) params.set("search", search);
       const { data } = await api.get<PagedResponse>(
-        `/api/admin/users?page=${page}&size=20&sort=createdAt,desc`
+        `/api/admin/users?${params.toString()}`
       );
       return data;
     },
@@ -50,12 +52,7 @@ export default function AdminUsersPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
-  const filtered = (data?.content ?? []).filter(
-    (u) =>
-      !search ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = data?.content ?? [];
 
   return (
     <div>
@@ -76,7 +73,7 @@ export default function AdminUsersPage() {
                 type="search"
                 placeholder="Filtrar..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                 className="w-full h-8 rounded-md border border-gray-200 pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800"
               />
             </div>

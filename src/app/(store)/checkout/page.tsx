@@ -332,14 +332,22 @@ function CheckoutContent() {
           <Clock className="h-8 w-8 text-orange-500 absolute top-6 left-1/2 -translate-x-1/2" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">A aguardar confirmação</h1>
-        <p className="text-gray-600 mb-2">
-          Foi enviado um pedido de pagamento para:
-        </p>
-        <p className="text-lg font-bold text-gray-900 mb-4">{phoneNumber}</p>
-        <p className="text-sm text-gray-500 mb-8">
-          Confirme o pagamento no seu telemóvel ({selectedMethod}). O sistema verificará
-          automaticamente a confirmação.
-        </p>
+        {(selectedMethod === "MPESA" || selectedMethod === "EMOLA") ? (
+          <>
+            <p className="text-gray-600 mb-2">
+              Foi enviado um pedido de pagamento para:
+            </p>
+            <p className="text-lg font-bold text-gray-900 mb-4">{phoneNumber}</p>
+            <p className="text-sm text-gray-500 mb-8">
+              Confirme o pagamento no seu telemóvel ({selectedMethod}). O sistema verificará
+              automaticamente a confirmação.
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500 mb-8">
+            O pagamento está a ser verificado. Por favor aguarde.
+          </p>
+        )}
         <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 mb-6">
           <p>Total a pagar: <strong>{formatMZN(total)}</strong></p>
           <p className="mt-1 text-xs text-gray-400">Verificação a cada 3 segundos...</p>
@@ -526,7 +534,7 @@ function CheckoutContent() {
               </div>
             )}
 
-            {(selectedMethod === "VISA" || selectedMethod === "MASTERCARD") && (
+            {selectedMethod === "VISA" && (
               <Elements stripe={stripePromise}>
                 <StripeCardForm
                   onCheckout={handleStripeCheckout}

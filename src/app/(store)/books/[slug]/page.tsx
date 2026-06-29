@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ShoppingCart,
   BookOpen,
@@ -13,6 +14,7 @@ import {
   ChevronRight,
   Star,
   Check,
+  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +25,8 @@ import { useBook } from "@/hooks/useBooks";
 import { useBookAccess } from "@/hooks/useLibrary";
 import { useCart } from "@/hooks/useCart";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useWishlistCheck, useToggleWishlist } from "@/hooks/useWishlist";
+import { isAuthenticated } from "@/lib/auth";
 import { formatMZN } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
@@ -41,8 +45,12 @@ export default function BookDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: book, isLoading, error } = useBook(slug);
   const { data: access } = useBookAccess(book?.id || "");
+  const { data: wishlistCheck } = useWishlistCheck(book?.id || "");
+  const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
   const { addItem } = useCart();
+  const queryClient = useQueryClient();
   const user = useCurrentUser();
+  const loggedIn = isAuthenticated();
   const { toast } = useToast();
   const [previewIndex, setPreviewIndex] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -51,6 +59,22 @@ export default function BookDetailPage() {
   const { register, handleSubmit, setValue, watch, formState: { errors }, reset } =
     useForm<ReviewFormData>({ resolver: zodResolver(reviewSchema), defaultValues: { rating: 0 } });
   const currentRating = watch("rating");
+
+  const handleWishlistToggle = async () => {
+    if (!book) return;
+    if (!loggedIn) { toast({ variant: "destructive", title: "Inicia sessão para usar a lista de desejos" }); return; }
+    try {
+      if (wishlistCheck?.inWishlist) {
+        await removeWishlist.mutateAsync(book.id);
+        toast({ title: "Removido da lista de desejos" });
+      } else {
+        await addWishlist.mutateAsync({ bookId: book.id, bookSlug: book.slug, bookTitle: book.title, coverImage: book.coverImageUrl, price: book.price });
+        toast({ title: "Adicionado à lista de desejos" });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Erro ao actualizar lista de desejos" });
+    }
+  };
 
   const handleAddToCart = () => {
     if (!book) return;
@@ -71,6 +95,7 @@ export default function BookDetailPage() {
     setSubmittingReview(true);
     try {
       await api.post(`/api/catalog/books/${book.id}/reviews`, data);
+      await queryClient.invalidateQueries({ queryKey: ["book", slug] });
       toast({ variant: "success", title: "Avaliação enviada!", description: "Obrigado pela sua opinião." });
       reset();
     } catch {
@@ -304,6 +329,16 @@ export default function BookDetailPage() {
                   )}
                 </p>
               )}
+
+              <button
+                onClick={handleWishlistToggle}
+                className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-gray-600 hover:text-red-500 transition-colors"
+              >
+                <Heart
+                  className={wishlistCheck?.inWishlist ? "h-4 w-4 fill-red-500 text-red-500" : "h-4 w-4"}
+                />
+                {wishlistCheck?.inWishlist ? "Remover da lista de desejos" : "Adicionar à lista de desejos"}
+              </button>
             </div>
           </div>
 

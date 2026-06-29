@@ -72,6 +72,8 @@ export default function NewBookPage() {
   const onSubmit = async (data: BookFormData) => {
     setSaving(true);
     try {
+      const authorIds = parseIds(data.authorIds);
+      const categoryIds = parseIds(data.categoryIds);
       const payload = {
         title: data.title,
         description: data.description,
@@ -84,8 +86,8 @@ export default function NewBookPage() {
         ...(data.publisher && { publisher: data.publisher }),
         ...(data.pageCount && { pageCount: data.pageCount }),
         ...(data.stockQuantity && { stockQuantity: data.stockQuantity }),
-        ...(parseIds(data.authorIds) && { authorIds: parseIds(data.authorIds) }),
-        ...(parseIds(data.categoryIds) && { categoryIds: parseIds(data.categoryIds) }),
+        ...(authorIds && { authorIds }),
+        ...(categoryIds && { categoryIds }),
       };
 
       const { data: created } = await api.post<{ id: string }>("/api/admin/books", payload);

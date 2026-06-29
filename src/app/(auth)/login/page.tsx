@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,9 +20,11 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-export default function LoginPage() {
+function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
-  const login = useLogin();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/library";
+  const login = useLogin(redirectTo);
 
   const {
     register,
@@ -147,5 +150,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

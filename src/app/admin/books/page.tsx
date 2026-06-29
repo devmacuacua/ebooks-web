@@ -6,8 +6,7 @@ import { Plus, Search, Pencil, Trash2, BookOpen } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import api from "@/lib/api";
-import { formatMZN } from "@/lib/api";
+import api, { formatMZN } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import type { BookSummary, PaginatedResponse } from "@/types";
 

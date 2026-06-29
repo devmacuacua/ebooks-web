@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { BookOpen, Package } from "lucide-react";
+import { BookOpen, Package, Heart } from "lucide-react";
 import { StarRating } from "./StarRating";
 import { Badge } from "@/components/ui/badge";
 import { formatMZN } from "@/lib/api";
@@ -19,6 +19,8 @@ interface BookCardProps {
   totalReviews?: number;
   subscriptionOnly?: boolean;
   className?: string;
+  inWishlist?: boolean;
+  onWishlistToggle?: (e: React.MouseEvent) => void;
 }
 
 const TYPE_BADGE: Record<BookType, { label: string; variant: "ebook" | "physical" | "both" }> = {
@@ -38,6 +40,8 @@ export function BookCard({
   totalReviews,
   subscriptionOnly,
   className,
+  inWishlist,
+  onWishlistToggle,
 }: BookCardProps) {
   const typeBadge = TYPE_BADGE[type];
 
@@ -71,6 +75,18 @@ export function BookCard({
             <Badge variant="accent">Subscrição</Badge>
           )}
         </div>
+        {/* Wishlist button */}
+        {onWishlistToggle && (
+          <button
+            onClick={onWishlistToggle}
+            aria-label={inWishlist ? "Remover da lista de desejos" : "Adicionar à lista de desejos"}
+            className="absolute top-2 right-2 rounded-full bg-white/80 p-1.5 shadow hover:bg-white transition-colors"
+          >
+            <Heart
+              className={cn("h-4 w-4", inWishlist ? "fill-red-500 text-red-500" : "text-gray-400")}
+            />
+          </button>
+        )}
       </div>
 
       {/* Content */}
