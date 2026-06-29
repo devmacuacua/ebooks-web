@@ -156,7 +156,7 @@ function CatalogContent() {
     router.replace(qs ? `/catalog?${qs}` : "/catalog", { scroll: false });
   }, [filters.search, filters.type, filters.categories, filters.sort, router]);
 
-  const { data, isLoading } = useBooks(filters);
+  const { data, isLoading, isError } = useBooks(filters);
   const loggedIn = isAuthenticated();
   const { data: wishlistItems } = useWishlist();
   const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
@@ -331,6 +331,14 @@ function CatalogContent() {
               {Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="rounded-xl bg-gray-100 animate-pulse aspect-[2/3]" />
               ))}
+            </div>
+          ) : isError ? (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg mb-2">Erro ao carregar catálogo</p>
+              <p className="text-gray-300 text-sm mb-6">Verifique a sua ligação e tente novamente</p>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Tentar novamente
+              </Button>
             </div>
           ) : data?.content.length === 0 ? (
             <div className="text-center py-20">

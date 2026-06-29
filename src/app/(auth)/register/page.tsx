@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Mail, Lock, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRegister } from "@/hooks/useAuth";
@@ -155,6 +155,16 @@ export default function RegisterPage() {
           error={errors.confirmPassword?.message}
           {...formRegister("confirmPassword")}
         />
+
+        {register.isError && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              {(register.error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+                "Erro ao criar conta. Tente novamente."}
+            </span>
+          </div>
+        )}
 
         <Button type="submit" className="w-full" size="lg" loading={register.isPending}>
           Criar conta

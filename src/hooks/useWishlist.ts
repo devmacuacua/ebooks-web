@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { useToast } from "@/components/ui/toast";
 
 export interface WishlistItem {
   id: string;
@@ -40,6 +41,7 @@ export function useWishlistCheck(bookId: string) {
 
 export function useToggleWishlist() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const add = useMutation({
     mutationFn: (item: { bookId: string; bookSlug?: string; bookTitle: string; coverImage?: string; price?: number }) =>
@@ -48,6 +50,9 @@ export function useToggleWishlist() {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
       queryClient.setQueryData(["wishlist-check", variables.bookId], { inWishlist: true });
     },
+    onError: () => {
+      toast({ variant: "destructive", title: "Erro ao adicionar à lista de desejos" });
+    },
   });
 
   const remove = useMutation({
@@ -55,6 +60,9 @@ export function useToggleWishlist() {
     onSuccess: (_, bookId) => {
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
       queryClient.setQueryData(["wishlist-check", bookId], { inWishlist: false });
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Erro ao remover da lista de desejos" });
     },
   });
 

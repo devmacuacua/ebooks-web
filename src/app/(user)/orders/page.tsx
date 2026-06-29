@@ -204,7 +204,22 @@ function OrderCard({ order }: { order: Order }) {
 
 function OrdersContent() {
   const [page, setPage] = useState(0);
-  const { data, isLoading } = useOrders(page);
+  const { data, isLoading, isError } = useOrders(page);
+
+  if (isError) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <AlertCircle className="h-12 w-12 text-red-300 mx-auto mb-3" />
+        <p className="text-gray-500 text-sm">Não foi possível carregar as encomendas.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 text-sm text-blue-700 hover:underline"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -55,7 +55,7 @@ export function NotificationBell({ userId }: { userId: string }) {
     enabled: Boolean(userId),
   });
 
-  const { data: notifications = [], isLoading } = useQuery<AppNotification[]>({
+  const { data: notifications = [], isLoading, isError } = useQuery<AppNotification[]>({
     queryKey: ["notifications", userId],
     queryFn: async () => {
       const { data } = await api.get<AppNotification[]>(
@@ -65,6 +65,7 @@ export function NotificationBell({ userId }: { userId: string }) {
     },
     enabled: open && Boolean(userId),
     staleTime: 30_000,
+    retry: 1,
   });
 
   const markOne = useMutation({
@@ -132,6 +133,10 @@ export function NotificationBell({ userId }: { userId: string }) {
             {isLoading ? (
               <div className="py-8 text-center">
                 <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-800 border-t-transparent" />
+              </div>
+            ) : isError ? (
+              <div className="py-8 text-center text-xs text-gray-400">
+                Não foi possível carregar as notificações.
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-10 text-center text-sm text-gray-400">
