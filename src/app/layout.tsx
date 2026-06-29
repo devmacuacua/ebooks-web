@@ -28,6 +28,11 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_MZ",
     siteName: "EBooksStore",
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://ebooksstore.co.mz",
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@ebooksstore_mz",
   },
 };
 
