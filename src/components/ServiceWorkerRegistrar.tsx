@@ -2,10 +2,12 @@
 
 import { useEffect } from 'react';
 import { useSyncOnResume } from '@/hooks/useOfflineReader';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useToast } from '@/components/ui/toast';
 
 export function ServiceWorkerRegistrar() {
   useSyncOnResume();
+  usePushNotifications();
   const { toast } = useToast();
 
   useEffect(() => {

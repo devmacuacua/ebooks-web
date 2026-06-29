@@ -148,7 +148,13 @@ function EbookCard({ item }: { item: LibraryItem }) {
       </div>
 
       {/* Info */}
-      <p className="text-xs font-medium text-gray-900 line-clamp-2 mb-1">{book.title}</p>
+      <p className="text-xs font-medium text-gray-900 line-clamp-2 mb-0.5">{book.title}</p>
+      <Link
+        href={`/books/${book.slug}`}
+        className="text-[10px] text-blue-700 hover:underline mb-1 block truncate"
+      >
+        Ver na loja →
+      </Link>
 
       {/* Progress + offline button */}
       <div className="flex items-center justify-between gap-2">

@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check } from "lucide-react";
+import React from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
+import api from "@/lib/api";
 
 interface Settings {
   siteName: string;
@@ -27,19 +30,49 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [saved, setSaved] = useState(false);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: settings, isLoading } = useQuery<Settings>({
+    queryKey: ["admin-settings"],
+    queryFn: async () => {
+      const { data } = await api.get<Settings>("/api/admin/settings");
+      return data;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (payload: Settings) => {
+      const { data } = await api.put<Settings>("/api/admin/settings", payload);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(["admin-settings"], data);
+      toast({ variant: "success", title: "Configurações guardadas" });
+    },
+    onError: () => {
+      toast({ variant: "destructive", title: "Erro ao guardar configurações" });
+    },
+  });
+
+  const current = settings ?? DEFAULT_SETTINGS;
 
   const set = (key: keyof Settings, value: string | boolean) => {
-    setSettings((s) => ({ ...s, [key]: value }));
-    setSaved(false);
+    qc.setQueryData(["admin-settings"], { ...current, [key]: value });
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    mutation.mutate(current);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -61,7 +94,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type="text"
-                value={settings.siteName}
+                value={current.siteName}
                 onChange={(e) => set("siteName", e.target.value)}
                 className="w-full h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800"
               />
@@ -72,7 +105,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type="email"
-                value={settings.supportEmail}
+                value={current.supportEmail}
                 onChange={(e) => set("supportEmail", e.target.value)}
                 className="w-full h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800"
               />
@@ -92,7 +125,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type="number"
-                value={settings.deliveryFee}
+                value={current.deliveryFee}
                 onChange={(e) => set("deliveryFee", e.target.value)}
                 className="w-48 h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800"
               />
@@ -103,7 +136,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type="number"
-                value={settings.maxItemsPerOrder}
+                value={current.maxItemsPerOrder}
                 onChange={(e) => set("maxItemsPerOrder", e.target.value)}
                 className="w-48 h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-800"
               />
@@ -127,18 +160,18 @@ export default function AdminSettingsPage() {
                 <div className="relative mt-0.5">
                   <input
                     type="checkbox"
-                    checked={settings[key] as boolean}
+                    checked={current[key] as boolean}
                     onChange={(e) => set(key, e.target.checked)}
                     className="sr-only"
                   />
                   <div
                     className={`w-10 h-6 rounded-full transition-colors ${
-                      settings[key] ? "bg-blue-800" : "bg-gray-200"
+                      current[key] ? "bg-blue-800" : "bg-gray-200"
                     }`}
                   >
                     <div
                       className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        settings[key] ? "translate-x-5" : "translate-x-1"
+                        current[key] ? "translate-x-5" : "translate-x-1"
                       }`}
                     />
                   </div>
@@ -155,11 +188,13 @@ export default function AdminSettingsPage() {
         <div className="flex items-center gap-3">
           <button
             type="submit"
-            className="px-5 py-2 bg-blue-800 text-white text-sm font-medium rounded-md hover:bg-blue-900 transition-colors"
+            disabled={mutation.isPending}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-800 text-white text-sm font-medium rounded-md hover:bg-blue-900 disabled:opacity-60 transition-colors"
           >
+            {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Guardar configurações
           </button>
-          {saved && (
+          {mutation.isSuccess && (
             <span className="flex items-center gap-1 text-sm text-green-600">
               <Check className="h-4 w-4" /> Guardado
             </span>
