@@ -30,20 +30,20 @@ const NAV_ITEMS = [
   { href: "/admin/settings", label: "Configurações", icon: Settings },
 ];
 
-function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const logout = useLogout();
+interface AdminSidebarProps {
+  pathname: string;
+  onNavClick: () => void;
+  onLogout: () => void;
+}
 
-  const Sidebar = ({ mobile = false }) => (
-    <nav className={`flex flex-col h-full ${mobile ? "" : ""}`}>
-      {/* Logo */}
+function AdminSidebar({ pathname, onNavClick, onLogout }: AdminSidebarProps) {
+  return (
+    <nav className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-4 py-5 border-b border-gray-200">
         <BookOpen className="h-6 w-6 text-blue-800" />
         <span className="font-bold text-gray-900">Admin Panel</span>
       </div>
 
-      {/* Nav items */}
       <div className="flex-1 px-3 py-4 space-y-1">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -51,7 +51,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setSidebarOpen(false)}
+              onClick={onNavClick}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? "bg-blue-50 text-blue-800"
@@ -65,10 +65,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         })}
       </div>
 
-      {/* Logout */}
       <div className="px-3 py-4 border-t border-gray-200">
         <button
-          onClick={logout}
+          onClick={onLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
         >
           <LogOut className="h-4 w-4" />
@@ -83,12 +82,18 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
     </nav>
   );
+}
+
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const logout = useLogout();
 
   return (
     <div className="min-h-screen flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-60 shrink-0 border-r border-gray-200 bg-white">
-        <Sidebar />
+        <AdminSidebar pathname={pathname} onNavClick={() => {}} onLogout={logout} />
       </aside>
 
       {/* Mobile sidebar */}
@@ -105,7 +110,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             >
               <X className="h-5 w-5" />
             </button>
-            <Sidebar mobile />
+            <AdminSidebar
+              pathname={pathname}
+              onNavClick={() => setSidebarOpen(false)}
+              onLogout={logout}
+            />
           </div>
         </div>
       )}

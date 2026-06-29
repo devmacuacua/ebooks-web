@@ -48,6 +48,7 @@ export function useCreateOrder() {
           bookTitle: i.title,
           bookType: i.type,
           bookCover: i.coverImageUrl,
+          bookSlug: i.slug,
           price: i.price,
           quantity: i.quantity,
         })),

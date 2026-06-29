@@ -90,7 +90,7 @@ function WishlistContent() {
               <div className="flex flex-1 flex-col justify-between gap-2">
                 <div>
                   <Link
-                    href={`/books/${item.bookId}`}
+                    href={`/books/${item.bookSlug ?? item.bookId}`}
                     className="text-base font-semibold text-gray-900 hover:text-blue-800 transition-colors line-clamp-2"
                   >
                     {item.bookTitle}

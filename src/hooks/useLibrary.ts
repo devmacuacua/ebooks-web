@@ -6,6 +6,7 @@ import type { LibraryItem } from "@/types";
 interface ReadingServiceEntry {
   id: string;
   bookId: string;
+  bookSlug?: string;
   bookTitle: string;
   coverImage?: string;
   format?: string;
@@ -27,7 +28,7 @@ function adaptLibraryEntry(raw: ReadingServiceEntry): LibraryItem {
     book: {
       id: raw.bookId,
       title: raw.bookTitle,
-      slug: raw.bookId,
+      slug: raw.bookSlug ?? raw.bookId,
       coverImageUrl: raw.coverImage,
       price: 0,
       type: "EBOOK",
