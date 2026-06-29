@@ -18,6 +18,7 @@ import {
   Crown,
   Heart,
   Handshake,
+  Bell,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Avatar from "@radix-ui/react-avatar";
@@ -275,6 +276,14 @@ export function Header() {
                         className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer outline-none"
                       >
                         <Handshake className="h-4 w-4 text-blue-600" /> Portal do Parceiro
+                      </Link>
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item asChild>
+                      <Link
+                        href="/notifications"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50 cursor-pointer outline-none"
+                      >
+                        <Bell className="h-4 w-4" /> Notificações
                       </Link>
                     </DropdownMenu.Item>
                     <DropdownMenu.Item asChild>

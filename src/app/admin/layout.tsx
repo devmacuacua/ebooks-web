@@ -15,6 +15,7 @@ import {
   Truck,
   Handshake,
   BarChart3,
+  Star,
 } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useLogout } from "@/hooks/useAuth";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/admin/deliveries", label: "Entregas", icon: Truck },
   { href: "/admin/partners", label: "Parceiros", icon: Handshake },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/reviews", label: "Avaliações", icon: Star },
   { href: "/admin/users", label: "Utilizadores", icon: Users },
   { href: "/admin/settings", label: "Configurações", icon: Settings },
 ];
