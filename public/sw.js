@@ -108,13 +108,11 @@ async function flushPendingProgress() {
 
   for (const item of items) {
     try {
-      const res = await fetch('/api/reading/progress', {
+      const res = await fetch(`/api/reading/reader/${item.bookId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bookId: item.bookId,
           currentPage: item.currentPage,
-          totalPages: item.totalPages,
           deviceId: item.deviceId,
         }),
         credentials: 'include',

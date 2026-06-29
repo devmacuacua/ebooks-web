@@ -20,6 +20,7 @@ import { BookCard } from "@/components/books/BookCard";
 import { useFeaturedBooks, useNewArrivals } from "@/hooks/useBooks";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
 import { usePlans } from "@/hooks/useSubscription";
+import { useRecentlyRead } from "@/hooks/useLibrary";
 import { isAuthenticated } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { formatMZN } from "@/lib/api";
@@ -43,6 +44,7 @@ export default function HomePage() {
   const { data: featured, isLoading: loadingFeatured } = useFeaturedBooks();
   const { data: newArrivals, isLoading: loadingNew } = useNewArrivals();
   const { data: plans, isLoading: loadingPlans } = usePlans();
+  const { data: recentlyRead } = useRecentlyRead(5);
   const { data: wishlistItems } = useWishlist();
   const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
   const { toast } = useToast();
@@ -129,6 +131,49 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Continue Reading ──────────────────────────────────────────── */}
+      {loggedIn && recentlyRead && recentlyRead.length > 0 && (
+        <section className="py-10 bg-gray-50 border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Continuar a ler</h2>
+              <Link href="/library" className="text-sm text-blue-800 hover:underline flex items-center gap-1">
+                Ver biblioteca <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
+              {recentlyRead.map((item) => (
+                <Link
+                  key={item.bookId}
+                  href={`/reader/${item.bookId}`}
+                  className="flex-shrink-0 w-36 group"
+                >
+                  <div className="relative rounded-lg overflow-hidden bg-gray-200 aspect-[2/3] mb-2 shadow-sm group-hover:shadow-md transition-shadow">
+                    {item.coverImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.coverImage} alt={item.bookTitle} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <BookOpen className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                    {/* Progress bar */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
+                      <div
+                        className="h-full bg-orange-400"
+                        style={{ width: `${item.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">{item.bookTitle}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{item.progressPercent}% lido</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Featured Books ─────────────────────────────────────────────── */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">

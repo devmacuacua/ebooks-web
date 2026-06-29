@@ -64,10 +64,8 @@ export function useSyncOnResume() {
         await Promise.all(
           pending.map(async (p) => {
             try {
-              await api.post('/api/reading/progress', {
-                bookId: p.bookId,
+              await api.post(`/api/reading/reader/${p.bookId}/progress`, {
                 currentPage: p.currentPage,
-                totalPages: p.totalPages,
                 deviceId: p.deviceId,
               });
               await deletePendingProgress(p.bookId, p.deviceId);

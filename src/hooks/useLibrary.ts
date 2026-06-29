@@ -67,6 +67,29 @@ export function useLibrary() {
   });
 }
 
+interface RecentlyReadEntry {
+  bookId: string;
+  bookSlug?: string;
+  bookTitle: string;
+  coverImage?: string;
+  totalPages?: number;
+  currentPage: number;
+  lastReadAt: string;
+  progressPercent: number;
+}
+
+export function useRecentlyRead(limit = 5) {
+  return useQuery<RecentlyReadEntry[]>({
+    queryKey: ["library-recent", limit],
+    queryFn: async () => {
+      const { data } = await api.get<RecentlyReadEntry[]>(`/api/reading/library/recent?limit=${limit}`);
+      return data;
+    },
+    enabled: isAuthenticated(),
+    staleTime: 60_000,
+  });
+}
+
 export function useBookAccess(bookId: string) {
   return useQuery<{ hasAccess: boolean; accessType?: "PURCHASED" | "SUBSCRIPTION" }>({
     queryKey: ["book-access", bookId],
