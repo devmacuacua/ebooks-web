@@ -19,10 +19,11 @@ import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/books/BookCard";
 import { useFeaturedBooks, useNewArrivals } from "@/hooks/useBooks";
 import { useWishlist, useToggleWishlist } from "@/hooks/useWishlist";
+import { usePlans } from "@/hooks/useSubscription";
 import { isAuthenticated } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { formatMZN } from "@/lib/api";
-import type { BookSummary } from "@/types";
+import type { BookSummary, SubscriptionPlan } from "@/types";
 
 const CATEGORIES = [
   { name: "Romance", icon: Heart, slug: "romance", color: "bg-pink-50 text-pink-700 border-pink-200" },
@@ -35,39 +36,13 @@ const CATEGORIES = [
   { name: "Educação", icon: Award, slug: "educacao", color: "bg-red-50 text-red-700 border-red-200" },
 ];
 
-const PLANS = [
-  {
-    name: "Mensal",
-    price: 299,
-    type: "MONTHLY",
-    features: [
-      "Acesso ilimitado a ebooks",
-      "Leitura em qualquer dispositivo",
-      "Novos títulos semanalmente",
-      "Cancele quando quiser",
-    ],
-  },
-  {
-    name: "Anual",
-    price: 2499,
-    priceMonthly: 208,
-    type: "ANNUAL",
-    popular: true,
-    features: [
-      "Tudo do plano Mensal",
-      "Poupe 30% vs mensal",
-      "Acesso antecipado a novidades",
-      "1 livro físico grátis por trimestre",
-      "Suporte prioritário",
-    ],
-  },
-];
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { data: featured, isLoading: loadingFeatured } = useFeaturedBooks();
   const { data: newArrivals, isLoading: loadingNew } = useNewArrivals();
+  const { data: plans, isLoading: loadingPlans } = usePlans();
   const { data: wishlistItems } = useWishlist();
   const { add: addWishlist, remove: removeWishlist } = useToggleWishlist();
   const { toast } = useToast();
@@ -199,56 +174,70 @@ export default function HomePage() {
             <p className="text-gray-500">Leia quantos ebooks quiser, quando quiser</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {PLANS.map((plan) => (
-              <div
-                key={plan.type}
-                className={`relative rounded-2xl border-2 p-6 bg-white ${
-                  plan.popular
-                    ? "border-blue-800 shadow-lg shadow-blue-100"
-                    : "border-gray-200"
-                }`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-blue-800 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      MAIS POPULAR
-                    </span>
+            {loadingPlans
+              ? Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border-2 border-gray-200 p-6 bg-white animate-pulse">
+                    <div className="h-5 bg-gray-200 rounded w-1/2 mb-4" />
+                    <div className="h-8 bg-gray-200 rounded w-2/3 mb-6" />
+                    <div className="space-y-2 mb-6">
+                      {Array.from({ length: 4 }).map((__, j) => (
+                        <div key={j} className="h-4 bg-gray-100 rounded" />
+                      ))}
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded-lg" />
                   </div>
-                )}
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                  <div className="mt-2">
-                    <span className="text-3xl font-extrabold text-gray-900">
-                      {formatMZN(plan.price)}
-                    </span>
-                    <span className="text-gray-500 text-sm">
-                      {plan.type === "MONTHLY" ? "/mês" : "/ano"}
-                    </span>
-                    {plan.priceMonthly && (
-                      <p className="text-xs text-green-600 font-medium mt-0.5">
-                        ≈ {formatMZN(plan.priceMonthly)}/mês
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <ul className="space-y-2 mb-6">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                      <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/subscription">
-                  <Button
-                    className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                  >
-                    Começar agora
-                  </Button>
-                </Link>
-              </div>
-            ))}
+                ))
+              : (plans ?? []).map((plan: SubscriptionPlan) => {
+                  const isAnnual = plan.type === "ANNUAL";
+                  const priceMonthly = isAnnual ? Math.round(plan.price / 12) : null;
+                  return (
+                    <div
+                      key={plan.id}
+                      className={`relative rounded-2xl border-2 p-6 bg-white ${
+                        isAnnual
+                          ? "border-blue-800 shadow-lg shadow-blue-100"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      {isAnnual && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="bg-blue-800 text-white text-xs font-bold px-3 py-1 rounded-full">
+                            MAIS POPULAR
+                          </span>
+                        </div>
+                      )}
+                      <div className="mb-4">
+                        <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
+                        <div className="mt-2">
+                          <span className="text-3xl font-extrabold text-gray-900">
+                            {formatMZN(plan.price)}
+                          </span>
+                          <span className="text-gray-500 text-sm">
+                            {isAnnual ? "/ano" : "/mês"}
+                          </span>
+                          {priceMonthly && (
+                            <p className="text-xs text-green-600 font-medium mt-0.5">
+                              ≈ {formatMZN(priceMonthly)}/mês
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <ul className="space-y-2 mb-6">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                            <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <Link href="/subscription">
+                        <Button className="w-full" variant={isAnnual ? "default" : "outline"}>
+                          Começar agora
+                        </Button>
+                      </Link>
+                    </div>
+                  );
+                })}
           </div>
         </div>
       </section>
