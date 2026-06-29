@@ -11,6 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://ebooksstore.co.mz"),
   title: {
     template: "%s | EBooksStore",
     default: "EBooksStore | Livros Físicos e Digitais",
@@ -55,8 +56,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="min-h-screen flex flex-col antialiased">
-        <Providers>{children}</Providers>
-        <ServiceWorkerRegistrar />
+        <Providers>
+          {children}
+          <ServiceWorkerRegistrar />
+        </Providers>
       </body>
     </html>
   );

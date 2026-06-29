@@ -2,9 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // pdfjs-dist optionally requires canvas in Node.js. Stub it out in both bundlers.
+  turbopack: {
+    resolveAlias: {
+      canvas: "./src/lib/canvas-stub.js",
+    },
+  },
   webpack: (config) => {
-    // pdfjs-dist references canvas as an optional native dependency for Node.js.
-    // In the browser build we don't need it, so stub it out.
     config.resolve.alias = {
       ...config.resolve.alias,
       canvas: false,
