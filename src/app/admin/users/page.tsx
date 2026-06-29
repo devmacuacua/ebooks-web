@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Shield, ShieldOff, Search } from "lucide-react";
+import { Shield, ShieldOff, Search, Ban, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import api from "@/lib/api";
 
@@ -12,6 +12,7 @@ interface User {
   email: string;
   role: string;
   emailVerified: boolean;
+  active: boolean;
   avatar?: string;
 }
 
@@ -48,6 +49,13 @@ export default function AdminUsersPage() {
   const roleMutation = useMutation({
     mutationFn: async ({ id, newRole }: { id: string; newRole: string }) => {
       await api.patch(`/api/admin/users/${id}/role?newRole=${newRole}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  const activeMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      await api.patch(`/api/admin/users/${id}/active?active=${active}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
@@ -91,6 +99,7 @@ export default function AdminUsersPage() {
                     <th className="px-4 py-3 text-left font-medium text-gray-600">Email</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-600">Função</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-600">Email verificado</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Estado</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-600">Acções</th>
                   </tr>
                 </thead>
@@ -117,25 +126,51 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {user.role === "ADMIN" ? (
-                          <button
-                            onClick={() => roleMutation.mutate({ id: user.id, newRole: "CUSTOMER" })}
-                            className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 transition-colors"
-                            title="Remover admin"
-                          >
-                            <ShieldOff className="h-3.5 w-3.5" />
-                            Remover admin
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => roleMutation.mutate({ id: user.id, newRole: "ADMIN" })}
-                            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 transition-colors"
-                            title="Tornar admin"
-                          >
-                            <Shield className="h-3.5 w-3.5" />
-                            Tornar admin
-                          </button>
-                        )}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${user.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          {user.active ? "Activo" : "Banido"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {user.role === "ADMIN" ? (
+                            <button
+                              onClick={() => roleMutation.mutate({ id: user.id, newRole: "CUSTOMER" })}
+                              className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 transition-colors"
+                              title="Remover admin"
+                            >
+                              <ShieldOff className="h-3.5 w-3.5" />
+                              Remover admin
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => roleMutation.mutate({ id: user.id, newRole: "ADMIN" })}
+                              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 transition-colors"
+                              title="Tornar admin"
+                            >
+                              <Shield className="h-3.5 w-3.5" />
+                              Tornar admin
+                            </button>
+                          )}
+                          {user.active ? (
+                            <button
+                              onClick={() => activeMutation.mutate({ id: user.id, active: false })}
+                              className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-800 transition-colors"
+                              title="Banir utilizador"
+                            >
+                              <Ban className="h-3.5 w-3.5" />
+                              Banir
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => activeMutation.mutate({ id: user.id, active: true })}
+                              className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 transition-colors"
+                              title="Reactivar utilizador"
+                            >
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              Activar
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
