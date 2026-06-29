@@ -8,12 +8,22 @@ import { formatMZN } from "@/lib/api";
 import api from "@/lib/api";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface RevenuePoint {
   date: string;
   revenue: number;
   orders: number;
-  method: string;
 }
 
 interface TopBook {
@@ -35,65 +45,6 @@ const RANGE_OPTIONS = [
   { label: "30 dias", days: 30 },
   { label: "90 dias", days: 90 },
 ];
-
-function SimpleBarChart({ data, valueKey, labelKey }: {
-  data: any[];
-  valueKey: string;
-  labelKey: string;
-}) {
-  if (!data?.length) return <p className="text-sm text-gray-400 py-8 text-center">Sem dados</p>;
-  const max = Math.max(...data.map((d) => d[valueKey]));
-  return (
-    <div className="space-y-2">
-      {data.map((item, i) => (
-        <div key={i} className="flex items-center gap-2 text-xs">
-          <span className="w-28 text-gray-500 truncate shrink-0">{item[labelKey]}</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
-            <div
-              className="h-full bg-blue-800 rounded-full transition-all duration-500"
-              style={{ width: max > 0 ? `${(item[valueKey] / max) * 100}%` : "0%" }}
-            />
-          </div>
-          <span className="w-16 text-right font-medium text-gray-700">
-            {typeof item[valueKey] === "number" && item[valueKey] > 100
-              ? formatMZN(item[valueKey])
-              : item[valueKey]}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RevenueChart({ data }: { data: RevenuePoint[] }) {
-  if (!data?.length) return <p className="text-sm text-gray-400 py-8 text-center">Sem dados</p>;
-  const maxRevenue = Math.max(...data.map((d) => d.revenue));
-  const chartHeight = 140;
-  return (
-    <div className="relative">
-      <div className="flex items-end gap-1 h-36">
-        {data.map((point, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-            <div className="relative w-full">
-              <div
-                className="w-full bg-blue-800 rounded-t transition-all duration-300 hover:bg-blue-700"
-                style={{
-                  height: maxRevenue > 0 ? `${(point.revenue / maxRevenue) * chartHeight}px` : "2px",
-                  minHeight: "2px",
-                }}
-                title={`${point.date}: ${formatMZN(point.revenue)}`}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-xs text-gray-400 mt-2">
-        <span>{data[0]?.date ? format(new Date(data[0].date), "d MMM", { locale: ptBR }) : ""}</span>
-        <span>{data[data.length - 1]?.date ? format(new Date(data[data.length - 1].date), "d MMM", { locale: ptBR }) : ""}</span>
-      </div>
-    </div>
-  );
-}
 
 export default function AdminAnalyticsPage() {
   const [rangeDays, setRangeDays] = useState(30);
@@ -128,6 +79,18 @@ export default function AdminAnalyticsPage() {
     },
   });
 
+  const chartData = (revenueSeries ?? []).map((p) => ({
+    date: format(new Date(p.date), "d MMM", { locale: ptBR }),
+    Receita: p.revenue,
+    Encomendas: p.orders,
+  }));
+
+  const topBooksData = (topBooks ?? []).map((b) => ({
+    title: b.bookTitle.length > 18 ? b.bookTitle.slice(0, 18) + "…" : b.bookTitle,
+    Vendas: b.count,
+    Receita: b.revenue,
+  }));
+
   return (
     <div>
       <div className="mb-6">
@@ -144,7 +107,7 @@ export default function AdminAnalyticsPage() {
             icon: CreditCard,
             color: "text-green-600",
             bg: "bg-green-50",
-            format: formatMZN,
+            fmt: formatMZN,
           },
           {
             label: "Receita do Mês",
@@ -152,7 +115,7 @@ export default function AdminAnalyticsPage() {
             icon: TrendingUp,
             color: "text-blue-800",
             bg: "bg-blue-50",
-            format: formatMZN,
+            fmt: formatMZN,
           },
           {
             label: "Novos Utilizadores (hoje)",
@@ -160,7 +123,7 @@ export default function AdminAnalyticsPage() {
             icon: Users,
             color: "text-purple-600",
             bg: "bg-purple-50",
-            format: (v: number) => v.toLocaleString("pt-MZ"),
+            fmt: (v: number) => v.toLocaleString("pt-MZ"),
           },
           {
             label: "Total de Receita",
@@ -168,9 +131,9 @@ export default function AdminAnalyticsPage() {
             icon: BookOpen,
             color: "text-orange-600",
             bg: "bg-orange-50",
-            format: formatMZN,
+            fmt: formatMZN,
           },
-        ].map(({ label, value, icon: Icon, color, bg, format: fmt }) => (
+        ].map(({ label, value, icon: Icon, color, bg, fmt }) => (
           <Card key={label}>
             <CardContent className="pt-5">
               <div className="flex items-center gap-3">
@@ -194,7 +157,7 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Revenue chart */}
+        {/* Revenue area chart */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -217,21 +180,72 @@ export default function AdminAnalyticsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <RevenueChart data={revenueSeries ?? []} />
+            {chartData.length === 0 ? (
+              <p className="text-sm text-gray-400 py-8 text-center">Sem dados</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1e40af" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#1e40af" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    interval={Math.floor(chartData.length / 6)}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    width={36}
+                  />
+                  <Tooltip
+                    formatter={(value) => [formatMZN(Number(value ?? 0)), "Receita"]}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Receita"
+                    stroke="#1e40af"
+                    strokeWidth={2}
+                    fill="url(#revenueGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Top books */}
+        {/* Top books bar chart */}
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Top 10 Livros (vendas)</CardTitle>
           </CardHeader>
           <CardContent>
-            <SimpleBarChart
-              data={topBooks ?? []}
-              valueKey="count"
-              labelKey="bookTitle"
-            />
+            {topBooksData.length === 0 ? (
+              <p className="text-sm text-gray-400 py-8 text-center">Sem dados</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={topBooksData}
+                  layout="vertical"
+                  margin={{ top: 0, right: 8, bottom: 0, left: 0 }}
+                >
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="title"
+                    tick={{ fontSize: 10 }}
+                    width={110}
+                  />
+                  <Tooltip contentStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="Vendas" fill="#1e40af" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 

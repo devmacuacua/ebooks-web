@@ -147,3 +147,78 @@ export function usePartnerBooks(partnerStatus?: Partner["status"]) {
     staleTime: 60_000,
   });
 }
+
+// ── Revenue ───────────────────────────────────────────────────────────────────
+
+export interface RevenueSale {
+  id: string;
+  orderId: string;
+  bookTitle: string;
+  grossAmount: number;
+  partnerAmount: number;
+  platformAmount: number;
+  currency: string;
+  settledAt: string | null;
+  createdAt: string;
+}
+
+export interface RevenueSummary {
+  allTime: { totalSales: number; grossRevenue: number; yourShare: number; platformShare: number };
+  pending: { sales: number; amount: number };
+  recentSales: RevenueSale[];
+}
+
+export interface RevenueDetails {
+  items: RevenueSale[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface RevenueMonthPoint {
+  month: string;
+  sales: number;
+  gross: number;
+  partner_share: number;
+}
+
+export function useRevenueSummary(partnerStatus?: Partner["status"]) {
+  return useQuery<RevenueSummary>({
+    queryKey: ["partner-revenue-summary"],
+    queryFn: async () => {
+      const { data } = await api.get<RevenueSummary>("/api/partner/me/revenue");
+      return data;
+    },
+    enabled: isAuthenticated() && partnerStatus === "ACTIVE",
+    staleTime: 60_000,
+  });
+}
+
+export function useRevenueDetails(page = 1, partnerStatus?: Partner["status"]) {
+  return useQuery<RevenueDetails>({
+    queryKey: ["partner-revenue-details", page],
+    queryFn: async () => {
+      const { data } = await api.get<RevenueDetails>(
+        `/api/partner/me/revenue/details?page=${page}&limit=15`
+      );
+      return data;
+    },
+    enabled: isAuthenticated() && partnerStatus === "ACTIVE",
+    staleTime: 30_000,
+  });
+}
+
+export function useRevenueMonthly(year?: number, partnerStatus?: Partner["status"]) {
+  const y = year ?? new Date().getFullYear();
+  return useQuery<RevenueMonthPoint[]>({
+    queryKey: ["partner-revenue-monthly", y],
+    queryFn: async () => {
+      const { data } = await api.get<RevenueMonthPoint[]>(
+        `/api/partner/me/revenue/monthly?year=${y}`
+      );
+      return data;
+    },
+    enabled: isAuthenticated() && partnerStatus === "ACTIVE",
+    staleTime: 120_000,
+  });
+}

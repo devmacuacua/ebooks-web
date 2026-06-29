@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/inject-firebase-sw.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -50,6 +50,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.80.0",
+    "recharts": "^3.9.0",
     "stripe": "^22.3.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",

@@ -34,8 +34,24 @@ import {
   useCreateApiKey,
   useRevokeApiKey,
   usePartnerBooks,
+  useRevenueSummary,
+  useRevenueDetails,
+  useRevenueMonthly,
   type Partner,
+  type RevenueSale,
 } from "@/hooks/usePartner";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { formatMZN } from "@/lib/api";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { TrendingUp, DollarSign } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -293,9 +309,169 @@ function BooksTab({ partnerStatus }: { partnerStatus: Partner["status"] }) {
   );
 }
 
+// ── Revenue tab ───────────────────────────────────────────────────────────────
+
+const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+function RevenueTab({ partnerStatus }: { partnerStatus: Partner["status"] }) {
+  const [detailPage, setDetailPage] = useState(1);
+  const { data: summary, isLoading: loadingSummary } = useRevenueSummary(partnerStatus);
+  const { data: details, isLoading: loadingDetails } = useRevenueDetails(detailPage, partnerStatus);
+  const { data: monthly } = useRevenueMonthly(undefined, partnerStatus);
+
+  const chartData = (monthly ?? []).map((m) => ({
+    month: MONTH_NAMES[new Date(m.month).getMonth()],
+    Ganhos: Number((m.partner_share ?? 0).toFixed(0)),
+    Bruto: Number((m.gross ?? 0).toFixed(0)),
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {[
+          {
+            icon: TrendingUp,
+            label: "Os seus ganhos",
+            value: loadingSummary ? null : summary?.allTime.yourShare,
+            color: "text-green-600 bg-green-50",
+          },
+          {
+            icon: DollarSign,
+            label: "Receita bruta total",
+            value: loadingSummary ? null : summary?.allTime.grossRevenue,
+            color: "text-blue-700 bg-blue-50",
+          },
+          {
+            icon: Clock,
+            label: "Por liquidar",
+            value: loadingSummary ? null : summary?.pending.amount,
+            color: "text-yellow-600 bg-yellow-50",
+          },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <Card key={label}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">{label}</p>
+                  {value == null ? (
+                    <div className="h-5 w-20 bg-gray-100 animate-pulse rounded mt-0.5" />
+                  ) : (
+                    <p className="text-base font-bold text-gray-900">{formatMZN(value)}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Monthly chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Ganhos mensais — {new Date().getFullYear()}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chartData.length === 0 ? (
+            <p className="text-sm text-gray-400 py-6 text-center">Sem dados para o ano actual.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  width={36}
+                />
+                <Tooltip
+                  formatter={(value) => formatMZN(Number(value ?? 0))}
+                  labelStyle={{ fontWeight: 600 }}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                <Bar dataKey="Ganhos" fill="#1e40af" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Bruto" fill="#bfdbfe" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Transaction history */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Histórico de vendas</CardTitle>
+            {summary && (
+              <span className="text-xs text-gray-400">
+                {summary.allTime.totalSales} vendas no total
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingDetails ? (
+            <div className="p-6 text-center text-sm text-gray-400">A carregar…</div>
+          ) : !details?.items.length ? (
+            <div className="p-8 text-center text-sm text-gray-400">Sem vendas registadas.</div>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100">
+                {details.items.map((sale: RevenueSale) => (
+                  <div key={sale.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{sale.bookTitle}</p>
+                      <p className="text-xs text-gray-400">
+                        {format(new Date(sale.createdAt), "d MMM yyyy", { locale: ptBR })}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold text-green-700">+{formatMZN(sale.partnerAmount)}</p>
+                      <p className="text-xs text-gray-400">de {formatMZN(sale.grossAmount)}</p>
+                    </div>
+                    <div className="shrink-0">
+                      {sale.settledAt ? (
+                        <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">Liquidado</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full">Pendente</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {details.total > details.limit && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">
+                    Página {details.page} de {Math.ceil(details.total / details.limit)}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" disabled={details.page <= 1} onClick={() => setDetailPage((p) => p - 1)}>
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={details.page >= Math.ceil(details.total / details.limit)}
+                      onClick={() => setDetailPage((p) => p + 1)}
+                    >
+                      Seguinte
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Main partner dashboard ────────────────────────────────────────────────────
 
-type Tab = "overview" | "keys" | "books";
+type Tab = "overview" | "keys" | "books" | "revenue";
 
 function PartnerDashboard() {
   const { data: partner } = usePartnerProfile();
@@ -315,6 +491,7 @@ function PartnerDashboard() {
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "overview", label: "Perfil", icon: Handshake },
+    { id: "revenue", label: "Receitas", icon: TrendingUp },
     { id: "keys", label: "Chaves API", icon: Key },
     { id: "books", label: "Livros", icon: BookOpen },
   ];
@@ -431,6 +608,7 @@ function PartnerDashboard() {
         </Card>
       )}
 
+      {tab === "revenue" && <RevenueTab partnerStatus={partner.status} />}
       {tab === "keys" && <ApiKeysTab partnerStatus={partner.status} />}
       {tab === "books" && <BooksTab partnerStatus={partner.status} />}
     </div>
